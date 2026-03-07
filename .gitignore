@@ -1,0 +1,99 @@
+# ============================================================
+# labLocator — Root .gitignore
+# Stack: Spring Boot (Maven, Java 21) + React (Vite)
+# ============================================================
+
+# ─── OS / System ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ─── IDEs & Editors ─────────────────────────────────────────
+
+## IntelliJ IDEA / JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+## VS Code
+.vscode/
+
+## Eclipse / STS
+.classpath
+.project
+.settings/
+.apt_generated
+.factorypath
+.springBeans
+.sts4-cache
+
+## NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ─── Java / Maven (backend/) ────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/build/
+
+# Keep Maven wrapper scripts
+!backend/mvnw
+!backend/mvnw.cmd
+
+# Compiled output
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+*.nar
+
+# Log files
+*.log
+
+# Spring Boot specific
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-local.yml
+
+# ─── Node / React / Vite (frontend/) ────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+
+# Local env & secrets
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Cache
+frontend/.eslintcache
+frontend/.stylelintcache
+
+# Vite temp files
+frontend/*.local
+
+# npm
+npm-debug.log*
+lerna-debug.log*
+
+# ─── Secrets & Environment ──────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.secret
+secrets/
+
+# ─── Misc ───────────────────────────────────────────────────
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
