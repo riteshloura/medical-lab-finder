@@ -2,15 +2,14 @@ package com.lablocator.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
+@ToString(exclude = { "owner", "labTests" })
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -38,5 +37,7 @@ public class Lab {
     @JsonIgnore
     private List<LabTest> labTests;
 
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }
