@@ -14,21 +14,19 @@ import java.util.List;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    @Autowired
-    private UserRepo userRepo;
+        @Autowired
+        private UserRepo userRepo;
 
-    @Override
-    public UserDetails loadUserByUsername(String email)
-            throws UsernameNotFoundException {
+        @Override
+        public UserDetails loadUserByUsername(String email)
+                        throws UsernameNotFoundException {
 
-        User user = userRepo.findByEmail(email)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found"));
+                User user = userRepo.findByEmail(email)
+                                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                List.of(new SimpleGrantedAuthority(user.getRole().name()))
-        );
-    }
+                return new org.springframework.security.core.userdetails.User(
+                                user.getEmail(),
+                                user.getPassword(),
+                                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
+        }
 }

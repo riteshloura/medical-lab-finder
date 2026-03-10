@@ -2,10 +2,7 @@ package com.lablocator.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -13,6 +10,7 @@ import java.util.List;
 
 @Entity
 @Data
+@ToString(exclude = { "labs", "reports", "bookings" })
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -33,7 +31,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role =  Role.USER;
+    private Role role = Role.USER;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
