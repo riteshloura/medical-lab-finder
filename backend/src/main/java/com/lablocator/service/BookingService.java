@@ -7,6 +7,8 @@ import com.lablocator.repository.LabRepo;
 import com.lablocator.repository.LabTestRepo;
 import com.lablocator.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -56,5 +58,20 @@ public class BookingService {
         // 5. Set the tests on the booking and save (CascadeType.ALL saves BookingTests too)
         booking.setBookingTests(bookingTests);
         return bookingRepo.save(booking);
+    }
+
+    public List<Booking> getUserBooking(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return bookingRepo.findAllByUserId(user.getId());
+    }
+
+    public List<Booking> getLabBooking(String email) {
+        User labOwner = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No Bookings found for this lab"));
+
+        System.out.println(labOwner);
+        return bookingRepo.findAllByLabId(labOwner.getId());
     }
 }

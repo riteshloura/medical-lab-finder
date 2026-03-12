@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
+@PreAuthorize("hasRole('LAB_OWNER')")
 public class LabTestController {
     @Autowired
     private LabTestService labTestService;

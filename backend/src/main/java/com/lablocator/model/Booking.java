@@ -34,7 +34,7 @@ public class Booking {
     private Lab lab;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
-    @JsonIgnore
+//    @JsonIgnore
     private List<BookingTest> bookingTests;
 
     @CreationTimestamp
