@@ -18,8 +18,15 @@ public class LabController {
     @Autowired
     private LabService labService;
 
-    @GetMapping("/labs")
-    public ResponseEntity<List<Lab>> getAllLabs() {
+    @GetMapping("/labs/nearby")
+    public ResponseEntity<List<Lab>> getAllLabs(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam double radius
+    ) {
+        System.out.println("Latitude: " + lat);
+        System.out.println("Longitude: " + lng);
+        System.out.println("Radius: " + radius);
         return ResponseEntity.ok(labService.getAllLabs());
     }
 
