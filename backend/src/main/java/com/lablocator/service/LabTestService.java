@@ -25,7 +25,7 @@ public class LabTestService {
 
     public List<GetLabTestResponse> getLabTests(Long labId) {
         List<LabTest> labTests = labTestRepo.findByLabId(labId);
-        System.out.println(labTests);
+//        System.out.println(labTests);
 
         List<GetLabTestResponse> response = new ArrayList<>();
 

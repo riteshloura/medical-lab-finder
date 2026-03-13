@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,15 +34,19 @@ public class Booking {
     private Lab lab;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
-    @JsonIgnore
+//    @JsonIgnore
     private List<BookingTest> bookingTests;
 
+    @CreationTimestamp
+    @Column(name = "booking_date", updatable = false)
     private LocalDateTime bookingDate;
 
     private LocalTime timeSlot;
 
     @Enumerated(EnumType.STRING)
-    private BookingStatus status;
+    private BookingStatus status = BookingStatus.PENDING;
 
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }

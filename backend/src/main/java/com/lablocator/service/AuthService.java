@@ -3,6 +3,7 @@ package com.lablocator.service;
 import com.lablocator.dto.auth.LoginRequest;
 import com.lablocator.dto.auth.LoginResponse;
 import com.lablocator.dto.auth.RegisterRequest;
+import com.lablocator.model.Role;
 import com.lablocator.model.User;
 import com.lablocator.repository.UserRepo;
 import com.lablocator.security.JwtService;
@@ -36,6 +37,7 @@ public class AuthService {
         user.setEmail(req.email());
         user.setPassword(passwordEncoder.encode(req.password()));
         user.setName(req.name());
+        user.setRole(Role.valueOf(req.role()));
         userRepo.save(user);
 
         return "success";
