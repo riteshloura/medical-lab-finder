@@ -1,6 +1,7 @@
 package com.lablocator.controllers;
 
 import com.lablocator.dto.lab.CreateLabRequest;
+import com.lablocator.dto.lab.GetNearbyLabsResponse;
 import com.lablocator.model.Lab;
 import com.lablocator.service.LabService;
 import jakarta.validation.Valid;
@@ -19,7 +20,7 @@ public class LabController {
     private LabService labService;
 
     @GetMapping("/labs/nearby")
-    public ResponseEntity<List<Lab>> getAllLabs(
+    public ResponseEntity<List<GetNearbyLabsResponse>> getNearbyLabs(
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam double radius
@@ -27,7 +28,7 @@ public class LabController {
         System.out.println("Latitude: " + lat);
         System.out.println("Longitude: " + lng);
         System.out.println("Radius: " + radius);
-        return ResponseEntity.ok(labService.getAllLabs());
+        return ResponseEntity.ok(labService.getNearbyLabs(lat, lng, radius));
     }
 
     @GetMapping("/labs/{id}")
