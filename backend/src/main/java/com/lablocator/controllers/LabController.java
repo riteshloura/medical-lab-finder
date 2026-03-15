@@ -36,9 +36,13 @@ public class LabController {
         return labService.getLabById(id);
     }
 
-    @GetMapping("/labs?city={val}")
-    public ResponseEntity<List<Lab>> getLabsByCity(@PathVariable String val) {
-        return ResponseEntity.ok(labService.getLabsByCity(val));
+//    /labs/search?test={val}&&location={loc}
+    @GetMapping("/labs/search")
+    public ResponseEntity<List<Lab>> getLabsByTestAndLocation(
+            @RequestParam String test,
+            @RequestParam String location
+            ) {
+        return ResponseEntity.ok(labService.getLabsByTestAndLocation(test, location));
     }
 
     @PreAuthorize("hasRole('LAB_OWNER')")

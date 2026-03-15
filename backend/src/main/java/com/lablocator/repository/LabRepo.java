@@ -29,4 +29,9 @@ public interface LabRepo extends JpaRepository<Lab, Long> {
         ORDER BY distance
         """, nativeQuery = true)
     List<Lab> findNearbyLabs(Double lat, Double lng, Double radius);
+
+    List<Lab> findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(
+            String testName,
+            String city
+    );
 }

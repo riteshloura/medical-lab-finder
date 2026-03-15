@@ -48,8 +48,8 @@ public class LabService {
         return labRepo.findById(id).orElse(null);
     }
 
-    public List<Lab> getLabsByCity(String city) {
-        return labRepo.findByCityIgnoreCase(city);
+    public List<Lab> getLabsByTestAndLocation(String test, String location) {
+        return labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
     }
 
     public ResponseEntity<?> createLab(CreateLabRequest lab, String email) {
