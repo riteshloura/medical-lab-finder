@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@PreAuthorize("hasRole('LAB_OWNER')")
+//@PreAuthorize("hasRole('LAB_OWNER')")
 public class LabTestController {
     @Autowired
     private LabTestService labTestService;
@@ -23,7 +23,7 @@ public class LabTestController {
         return ResponseEntity.ok(labTestService.getLabTests(labId));
     }
 
-//    @PreAuthorize("hasRole('LAB_OWNER')")
+    @PreAuthorize("hasRole('LAB_OWNER')")
     @PostMapping("/labs/{labId}/tests")
     public ResponseEntity<GetLabTestResponse> createLabTest(@PathVariable Long labId, @RequestBody AddLabTestsRequest labTest) {
         return ResponseEntity.ok(labTestService.addTestsToLab(labId, labTest));
