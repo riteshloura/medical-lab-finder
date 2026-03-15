@@ -1,545 +1,396 @@
-import { Button, Input, Card, CardBody, CardFooter, Chip } from "@heroui/react";
-import { motion } from "framer-motion";
+import { Button, Input, Card, CardBody, Chip, Skeleton } from "@heroui/react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  MapPin,
-  Search,
-  Calendar,
-  FileText,
-  Star,
-  Clock,
-  Shield,
-  TrendingDown,
-  Users,
-  Building2,
-  TestTube,
-  ChevronRight,
-  Phone,
-  Mail,
-  Heart,
+  MapPin, Search, Building2, Phone, Navigation,
+  Shield, X, List, Layers, ChevronRight,
+  Clock, Star, TestTube2, SlidersHorizontal,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/axios";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import LabsMap from "../components/LabsMap";
+
+const QUICK_FILTERS = ["CBC", "Thyroid", "Diabetes", "Lipid", "Urine", "X-Ray"];
 
 function Home() {
-  const features = [
-    {
-      icon: <MapPin className="w-8 h-8" />,
-      title: "Find Nearby Labs",
-      description:
-        "Discover verified diagnostic labs near your location with real-time availability.",
-      color: "bg-emerald-500",
-    },
-    {
-      icon: <TrendingDown className="w-8 h-8" />,
-      title: "Compare Prices",
-      description:
-        "Compare test prices across multiple labs and save up to 60% on medical tests.",
-      color: "bg-green-500",
-    },
-    {
-      icon: <Calendar className="w-8 h-8" />,
-      title: "Easy Booking",
-      description:
-        "Book your preferred time slot online with instant confirmation.",
-      color: "bg-teal-500",
-    },
-    {
-      icon: <FileText className="w-8 h-8" />,
-      title: "Digital Reports",
-      description:
-        "Access your test reports digitally without visiting the lab again.",
-      color: "bg-cyan-500",
-    },
-  ];
+  const [nearbyLabs, setNearbyLabs] = useState([]);
+  const [isLoadingLabs, setIsLoadingLabs] = useState(true);
+  const [locationError, setLocationError] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
+  const [searchTest, setSearchTest] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedLab, setSelectedLab] = useState(null);
+  const [activeFilter, setActiveFilter] = useState(null);
 
-  const stats = [
-    { value: "500+", label: "Partner Labs", icon: <Building2 /> },
-    { value: "1000+", label: "Tests Available", icon: <TestTube /> },
-    { value: "50K+", label: "Happy Users", icon: <Users /> },
-    { value: "4.8", label: "User Rating", icon: <Star /> },
-  ];
-
-  const howItWorks = [
-    {
-      step: "01",
-      title: "Search Tests",
-      description: "Enter the test name or browse categories",
-    },
-    {
-      step: "02",
-      title: "Compare Labs",
-      description: "View prices, ratings & distance of nearby labs",
-    },
-    {
-      step: "03",
-      title: "Book Slot",
-      description: "Choose your preferred date and time",
-    },
-    {
-      step: "04",
-      title: "Get Reports",
-      description: "Receive digital reports on the app",
-    },
-  ];
-
-  const popularTests = [
-    { name: "Complete Blood Count (CBC)", price: "₹299", discount: "40% off" },
-    { name: "Lipid Profile", price: "₹399", discount: "35% off" },
-    { name: "Thyroid Profile (T3, T4, TSH)", price: "₹449", discount: "50% off" },
-    { name: "HbA1c (Glycated Hemoglobin)", price: "₹349", discount: "30% off" },
-    { name: "Liver Function Test (LFT)", price: "₹499", discount: "45% off" },
-    { name: "Kidney Function Test (KFT)", price: "₹549", discount: "40% off" },
-  ];
-
-//   const getLab = async () => {
-//     const response = await api.get("/labs");
-//     const data = await response.data;
-//     console.log(data);
-//   };
-
-//   useEffect(() => {
-//     getLab();
-//   }, []);
-
-    const getNearbyLabs = async (lat, lng) => {
-  try {
-    const response = await api.get(`/labs/nearby?lat=${lat}&lng=${lng}&radius=10`);
-    console.log(response.data);
-  } catch (error) {
-    console.error(error);
-  }
-};
-
-const getUserLocation = () => {
-  if (!navigator.geolocation) {
-    alert("Geolocation not supported");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-
-      getNearbyLabs(lat, lng);
-    },
-    (error) => {
-      console.error(error);
+  const getNearbyLabs = async (lat, lng) => {
+    try {
+      setIsLoadingLabs(true);
+      const response = await api.get(`/labs/nearby?lat=${lat}&lng=${lng}&radius=1000`);
+      setNearbyLabs(response.data);
+    } catch (error) {
+      console.error("Error fetching nearby labs:", error);
+      setLocationError("Failed to fetch nearby labs");
+    } finally {
+      setIsLoadingLabs(false);
     }
-  );
-};
+  };
 
-useEffect(() => {
-  getUserLocation();
-}, []);
-  
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation not supported by your browser");
+      setIsLoadingLabs(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserLocation({ lat, lng });
+        getNearbyLabs(lat, lng);
+      },
+      (error) => {
+        console.error(error);
+        setLocationError("Please enable location access to find nearby labs");
+        setIsLoadingLabs(false);
+      }
+    );
+  };
+
+  const handleSearch = async () => {
+    if (!searchTest && !searchLocation) return;
+    try {
+      setIsSearching(true);
+      setLocationError("");
+      const response = await api.get(`/labs/search?test=${searchTest}&&location=${searchLocation}`);
+      setNearbyLabs(response.data);
+    } catch (error) {
+      console.error("Error searching labs:", error);
+      setLocationError("Failed to search labs. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleQuickFilter = (tag) => {
+    setActiveFilter(activeFilter === tag ? null : tag);
+    setSearchTest(activeFilter === tag ? "" : tag);
+  };
+
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-teal-50">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-100">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <Chip
-                color="primary"
-                variant="flat"
-                className="mb-6"
-                startContent={<Heart className="w-4 h-4" />}
-              >
-                Trusted by 50,000+ patients across India
-              </Chip>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight"
-            >
-              Find Affordable{" "}
-              <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                Medical Labs
-              </span>
-              <br />
-              Near You
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto"
-            >
-              Compare prices, book appointments, and get your reports digitally.
-              Save up to 60% on diagnostic tests.
-            </motion.p>
-
-            {/* Search Box */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-10 max-w-3xl mx-auto"
-            >
-              <div className="bg-white p-4 rounded-2xl shadow-xl shadow-emerald-500/10 border border-gray-100">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Search for tests, labs, or health packages..."
-                      startContent={<Search className="w-5 h-5 text-gray-400" />}
-                      size="lg"
-                      classNames={{
-                        input: "text-base",
-                        inputWrapper: "bg-gray-50 border-none shadow-none",
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 sm:max-w-[200px]">
-                    <Input
-                      placeholder="Enter location"
-                      startContent={<MapPin className="w-5 h-5 text-gray-400" />}
-                      size="lg"
-                      classNames={{
-                        input: "text-base",
-                        inputWrapper: "bg-gray-50 border-none shadow-none",
-                      }}
-                    />
-                  </div>
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white px-8 shadow-lg shadow-emerald-500/30"
-                  >
-                    Search
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Trust Badges */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-500"
-            >
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-emerald-500" />
-                <span>NABL Accredited Labs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-teal-500" />
-                <span>Reports in 24 Hours</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-yellow-500" />
-                <span>4.8/5 User Rating</span>
-              </div>
-            </motion.div>
-          </div>
+      <div className="h-full relative">
+        {/* Full Screen Map */}
+        <div className="absolute inset-0">
+          <LabsMap
+            userLocation={userLocation}
+            labs={nearbyLabs}
+            selectedLab={selectedLab}
+            className="h-full w-full rounded-none border-0"
+          />
         </div>
-      </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-gradient-to-r from-emerald-600 to-teal-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center text-white"
-              >
-                <div className="text-4xl sm:text-5xl font-bold">{stat.value}</div>
-                <div className="mt-2 text-emerald-100 flex items-center justify-center gap-2">
-                  {stat.icon}
-                  <span>{stat.label}</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+        {/* ── Search Panel (Top-Left) ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.15 }}
+          className="absolute top-20 left-5 z-30 w-[360px]"
+        >
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
 
-      {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              Why Choose{" "}
-              <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                LabLocator?
-              </span>
-            </h2>
-            <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
-              We make diagnostic testing simple, affordable, and accessible for everyone.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card className="h-full border-none shadow-lg shadow-gray-200/50 hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 hover:-translate-y-1">
-                  <CardBody className="p-6">
-                    <div
-                      className={`w-14 h-14 ${feature.color} rounded-2xl flex items-center justify-center text-white mb-4`}
-                    >
-                      {feature.icon}
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="text-gray-600">{feature.description}</p>
-                  </CardBody>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              How It{" "}
-              <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                Works
-              </span>
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              Book your diagnostic test in 4 simple steps
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-4 gap-8">
-            {howItWorks.map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="relative"
-              >
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-teal-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto shadow-lg shadow-emerald-500/30">
-                    {item.step}
-                  </div>
-                  <h3 className="mt-6 text-xl font-semibold text-gray-900">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 text-gray-600">{item.description}</p>
-                </div>
-                {index < howItWorks.length - 1 && (
-                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] border-t-2 border-dashed border-emerald-300" />
+            {/* Search inputs */}
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
+                <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <input
+                  className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                  placeholder="Search tests, e.g. CBC, Thyroid…"
+                  value={searchTest}
+                  onChange={(e) => setSearchTest(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                {searchTest && (
+                  <button onClick={() => setSearchTest("")}>
+                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                  </button>
                 )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+              </div>
 
-      {/* Popular Tests */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="flex justify-between items-center mb-12"
-          >
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-                Popular{" "}
-                <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-                  Tests
-                </span>
-              </h2>
-              <p className="mt-2 text-gray-600">Most booked tests by our users</p>
-            </div>
-            <Button
-              variant="light"
-              endContent={<ChevronRight className="w-4 h-4" />}
-              className="text-emerald-600 hidden sm:flex"
-            >
-              View All Tests
-            </Button>
-          </motion.div>
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
+                <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <input
+                  className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                  placeholder="Area, city or pincode…"
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                {searchLocation && (
+                  <button onClick={() => setSearchLocation("")}>
+                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {popularTests.map((test, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.05 }}
-                viewport={{ once: true }}
+              <button
+                onClick={handleSearch}
+                disabled={isSearching || (!searchTest && !searchLocation)}
+                className="w-full h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm shadow-emerald-500/30"
               >
-                <Card className="border border-gray-100 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all duration-300">
-                  <CardBody className="p-5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{test.name}</h3>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-2xl font-bold text-emerald-600">
-                            {test.price}
-                          </span>
-                          <Chip size="sm" color="success" variant="flat">
-                            {test.discount}
-                          </Chip>
+                {isSearching ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Searching…
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    Search Labs
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Divider + Quick tags */}
+            <div className="px-3 pb-3">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Popular</span>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {QUICK_FILTERS.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => handleQuickFilter(tag)}
+                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${
+                      activeFilter === tag
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── Sidebar Toggle (Top-Right, below navbar) ── */}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="absolute top-20 right-5 z-30 bg-white rounded-xl shadow-lg px-3 h-10 flex items-center gap-2 border border-gray-100 hover:bg-gray-50 transition-colors text-sm font-semibold text-gray-700"
+        >
+          <List className="w-4 h-4" />
+          {isSidebarOpen ? "Hide list" : `${nearbyLabs.length} labs`}
+          <ChevronRight className={`w-4 h-4 transition-transform ${isSidebarOpen ? "rotate-0" : "rotate-180"}`} />
+        </motion.button>
+
+        {/* ── Stats Pill (Bottom-Left) ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="absolute bottom-6 left-5 z-30"
+        >
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-2.5 flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900 leading-none">{nearbyLabs.length}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Labs found</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── Map Controls (Bottom-Right) ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="absolute bottom-6 right-5 z-30 flex flex-col gap-2"
+        >
+          <button className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
+            <Layers className="w-4.5 h-4.5 text-gray-600" />
+          </button>
+          <button
+            onClick={getUserLocation}
+            className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            title="Go to my location"
+          >
+            <Navigation className="w-4.5 h-4.5 text-emerald-600" />
+          </button>
+        </motion.div>
+
+        {/* ── Labs Sidebar ── */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 220 }}
+              className="absolute top-0 right-0 h-full w-[400px] bg-white shadow-2xl z-20 flex flex-col"
+            >
+              {/* Sidebar header */}
+              <div className="px-5 pt-20 pb-4 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Nearby Labs</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {isLoadingLabs || isSearching
+                        ? "Fetching labs…"
+                        : `${nearbyLabs.length} result${nearbyLabs.length !== 1 ? "s" : ""} near you`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-gray-600" />
+                    </button>
+                    <button
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* List */}
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+
+                {/* Loading skeletons */}
+                {(isLoadingLabs || isSearching) &&
+                  [1, 2, 3, 4].map((i) => (
+                    <div key={i} className="rounded-2xl border border-gray-100 p-4 space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="w-3/4 h-4 rounded-lg" />
+                          <Skeleton className="w-1/2 h-3 rounded-lg" />
                         </div>
                       </div>
-                      <TestTube className="w-8 h-8 text-emerald-200" />
+                      <Skeleton className="w-full h-3 rounded-lg" />
+                      <Skeleton className="w-2/3 h-3 rounded-lg" />
                     </div>
-                  </CardBody>
-                  <CardFooter className="pt-0 px-5 pb-5">
-                    <Button
-                      fullWidth
-                      variant="flat"
-                      color="primary"
-                      className="font-medium"
+                  ))}
+
+                {/* Location error */}
+                {!isLoadingLabs && !isSearching && locationError && (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-4">
+                      <MapPin className="w-7 h-7 text-orange-400" />
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-800 mb-1">Location needed</h3>
+                    <p className="text-xs text-gray-500 mb-5 max-w-[220px]">{locationError}</p>
+                    <button
+                      onClick={getUserLocation}
+                      className="flex items-center gap-2 bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm hover:bg-emerald-600 transition-colors"
                     >
-                      Book Now
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+                      <Navigation className="w-4 h-4" />
+                      Enable location
+                    </button>
+                  </div>
+                )}
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-3xl p-8 sm:p-12 text-center text-white relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
-            <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-bold">
-                Ready to Save on Your Medical Tests?
-              </h2>
-              <p className="mt-4 text-lg text-emerald-100 max-w-2xl mx-auto">
-                Join thousands of users who are saving money and time on diagnostic tests.
-                Sign up now and get 20% off on your first booking!
-              </p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/register">
-                  <Button
-                    size="lg"
-                    className="bg-white text-emerald-600 font-semibold px-8 shadow-lg"
-                  >
-                    Get Started Free
-                  </Button>
-                </Link>
-                <Button
-                  size="lg"
-                  variant="bordered"
-                  className="border-white text-white font-semibold px-8"
-                >
-                  Learn More
-                </Button>
+                {/* Empty state */}
+                {!isLoadingLabs && !isSearching && !locationError && nearbyLabs.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
+                      <Building2 className="w-7 h-7 text-gray-300" />
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-700 mb-1">No labs found</h3>
+                    <p className="text-xs text-gray-400">Try a different test or location</p>
+                  </div>
+                )}
+
+                {/* Lab cards */}
+                {!isLoadingLabs && !isSearching && !locationError &&
+                  nearbyLabs.map((lab, idx) => (
+                    <motion.div
+                      key={lab.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                      onClick={() => setSelectedLab(lab)}
+                      className={`rounded-2xl border cursor-pointer transition-all duration-200 ${
+                        selectedLab?.id === lab.id
+                          ? "border-emerald-400 bg-emerald-50/60 shadow-md"
+                          : "border-gray-100 bg-white hover:border-emerald-200 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className="p-4">
+                        {/* Top row */}
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            selectedLab?.id === lab.id
+                              ? "bg-emerald-500"
+                              : "bg-gray-100"
+                          }`}>
+                            <Building2 className={`w-5 h-5 ${selectedLab?.id === lab.id ? "text-white" : "text-gray-500"}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">{lab.name}</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">{lab.city}</p>
+                          </div>
+                          {/* Verified badge */}
+                          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-[10px] font-semibold px-2 py-1 rounded-full border border-emerald-200 flex-shrink-0">
+                            <Shield className="w-3 h-3" />
+                            Verified
+                          </div>
+                        </div>
+
+                        {/* Address */}
+                        <div className="flex items-start gap-2 mb-2.5">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{lab.address}</p>
+                        </div>
+
+                        {/* Meta row */}
+                        <div className="flex items-center gap-3 mb-3">
+                          {lab.contactNumber && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                              <Phone className="w-3 h-3" />
+                              <span>{lab.contactNumber}</span>
+                            </div>
+                          )}
+                          {lab.slotCapacityOnline > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                              <Clock className="w-3 h-3" />
+                              <span>{lab.slotCapacityOnline} slots open</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CTA */}
+                        <Link to={`/lab/${lab.id}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="w-full h-8 rounded-xl bg-gray-900 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                            View details
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </div>
+                        </Link>
+                      </div>
+                    </motion.div>
+                  ))}
               </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-12">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-teal-500 rounded-xl flex items-center justify-center">
-                  <TestTube className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold text-white">LabLocator</span>
-              </div>
-              <p className="text-gray-400">
-                Making diagnostic testing simple, affordable, and accessible for everyone in India.
-              </p>
-              <div className="flex gap-4 mt-6">
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors">
-                  <Mail className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors">
-                  <Phone className="w-5 h-5" />
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Find Labs</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Browse Tests</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Health Packages</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Partner with Us</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Support</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">FAQs</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Feedback</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-emerald-400 transition-colors">Refund Policy</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-500">
-            <p>© 2026 LabLocator. All rights reserved. Made with ❤️ in India</p>
-          </div>
-        </div>
-      </footer>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
