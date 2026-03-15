@@ -51,63 +51,56 @@ html {
   border: none;
 }
 
-/* Popup styles */
+/* ── Popup base reset (no border, no min-width — each popup class owns its own style) ── */
 .leaflet-popup {
   margin-bottom: 20px;
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 16px !important;
   padding: 0 !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-  border: 2px solid #e5e7eb;
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.08) !important;
 }
 
+/* CRITICAL: no min-width here — it fights with the popup content's own width */
 .leaflet-popup-content {
   margin: 0 !important;
-  min-width: 260px;
+  padding: 0 !important;
+  width: auto !important;
+  font-family: inherit;
+  line-height: normal !important;
 }
 
 .leaflet-popup-tip {
   background: white !important;
-  border: 2px solid #e5e7eb;
-  border-top: none;
-  border-right: none;
-}
-
-.lab-popup .leaflet-popup-content-wrapper {
-  border: 2px solid #10b981;
-}
-
-.lab-popup .leaflet-popup-tip {
-  border-left-color: #10b981;
-  border-bottom-color: #10b981;
-}
-
-.custom-popup .leaflet-popup-content-wrapper {
-  border: 2px solid #10b981;
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-}
-
-.custom-popup .leaflet-popup-tip {
-  border-left-color: #10b981;
-  border-bottom-color: #10b981;
+  box-shadow: none !important;
 }
 
 .leaflet-popup-close-button {
-  width: 28px !important;
-  height: 28px !important;
-  padding: 0 !important;
-  font-size: 24px !important;
-  color: #9ca3af !important;
-  transition: all 0.2s ease !important;
-  border-radius: 8px !important;
-  margin: 8px !important;
+  display: none !important;
 }
 
-.leaflet-popup-close-button:hover {
-  color: #ef4444 !important;
-  background: #fee2e2 !important;
+/* ── Lab popup ── */
+.lab-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.10) !important;
+}
+
+.lab-popup .leaflet-popup-tip {
+  background: white !important;
+}
+
+/* ── User location popup ── */
+.user-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  border: 1.5px solid #d1fae5 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15) !important;
+}
+
+.user-popup .leaflet-popup-tip {
+  background: white !important;
 }
 
 /* Custom Scrollbar for labs list */

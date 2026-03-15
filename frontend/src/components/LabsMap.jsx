@@ -1,8 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import { Icon } from "leaflet";
 import { useEffect } from "react";
-import { Building2, MapPin, Phone, Navigation, Clock, Shield } from "lucide-react";
-import { Chip } from "@heroui/react";
+import { Building2, MapPin, Phone, Navigation, Clock, Shield, ChevronRight, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 
@@ -77,55 +76,273 @@ function RecenterMap({ center }) {
 }
 
 // ── Lab popup content ──────────────────────────────────────────────────────────
+// All layout uses explicit inline styles so Leaflet's or Tailwind's global CSS
+// cannot interfere with alignment.
 
 function LabPopupContent({ lab }) {
   return (
-    <div className="p-3 min-w-[240px] max-w-[280px]">
-      {/* Header */}
-      <div className="flex items-start gap-2.5 mb-2.5">
-        <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Building2 className="w-5 h-5 text-white" />
+    <div style={{
+      width: "280px",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      display: "block",
+      overflow: "hidden",
+    }}>
+
+      {/* ── Header band ── */}
+      <div style={{
+        background: "linear-gradient(135deg, #0d9488 0%, #059669 100%)",
+        padding: "16px",
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: "12px",
+        boxSizing: "border-box",
+        width: "100%",
+      }}>
+        {/* Lab icon */}
+        <div style={{
+          width: "42px",
+          height: "42px",
+          minWidth: "42px",
+          background: "rgba(255,255,255,0.18)",
+          borderRadius: "11px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "1.5px solid rgba(255,255,255,0.3)",
+        }}>
+          <Building2 size={20} color="white" strokeWidth={2} />
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 text-sm leading-snug">{lab.name}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{lab.city}, {lab.state}</p>
+
+        {/* Name + location */}
+        <div style={{ flex: "1 1 0", minWidth: 0, overflow: "hidden" }}>
+          <p style={{
+            margin: 0,
+            padding: 0,
+            fontWeight: 700,
+            fontSize: "14px",
+            color: "white",
+            lineHeight: "1.35",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {lab.name}
+          </p>
+          <p style={{
+            margin: "4px 0 0",
+            padding: 0,
+            fontSize: "11px",
+            color: "rgba(255,255,255,0.72)",
+            lineHeight: "1",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {lab.city}{lab.state ? `, ${lab.state}` : ""}
+          </p>
+        </div>
+
+        {/* Verified pill */}
+        <div style={{
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: "4px",
+          background: "rgba(255,255,255,0.18)",
+          border: "1px solid rgba(255,255,255,0.35)",
+          borderRadius: "20px",
+          padding: "4px 9px",
+        }}>
+          <Shield size={10} color="white" strokeWidth={2.5} />
+          <span style={{
+            fontSize: "10px",
+            fontWeight: 700,
+            color: "white",
+            letterSpacing: "0.4px",
+            lineHeight: 1,
+          }}>
+            Verified
+          </span>
         </div>
       </div>
 
-      {/* Verified */}
-      <div className="flex items-center gap-1.5 mb-2.5">
-        <Shield className="w-3 h-3 text-emerald-500" />
-        <span className="text-[11px] font-semibold text-emerald-600">Verified Lab</span>
+      {/* ── Body ── */}
+      <div style={{
+        background: "white",
+        padding: "14px 16px 16px",
+        boxSizing: "border-box",
+        width: "100%",
+      }}>
+
+        {/* Address */}
+        <div style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: "8px",
+          marginBottom: "9px",
+        }}>
+          <div style={{ flexShrink: 0, marginTop: "2px" }}>
+            <MapPin size={13} color="#9ca3af" strokeWidth={2} />
+          </div>
+          <p style={{
+            margin: 0,
+            padding: 0,
+            fontSize: "12px",
+            color: "#4b5563",
+            lineHeight: "1.55",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}>
+            {lab.address}
+          </p>
+        </div>
+
+        {/* Phone */}
+        {lab.contactNumber && (
+          <div style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "9px",
+          }}>
+            <div style={{ flexShrink: 0 }}>
+              <Phone size={13} color="#9ca3af" strokeWidth={2} />
+            </div>
+            <p style={{
+              margin: 0,
+              padding: 0,
+              fontSize: "12px",
+              color: "#4b5563",
+              lineHeight: 1,
+            }}>
+              {lab.contactNumber}
+            </p>
+          </div>
+        )}
+
+        {/* Slots available */}
+        {lab.slotCapacityOnline > 0 && (
+          <div style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "13px",
+          }}>
+            <div style={{ flexShrink: 0 }}>
+              <Clock size={13} color="#10b981" strokeWidth={2} />
+            </div>
+            <p style={{
+              margin: 0,
+              padding: 0,
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#059669",
+              lineHeight: 1,
+            }}>
+              {lab.slotCapacityOnline} slots available
+            </p>
+            {/* Live dot */}
+            <div style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "#10b981",
+              animation: "pulse 2s infinite",
+              flexShrink: 0,
+            }} />
+          </div>
+        )}
+
+        {/* Divider */}
+        <div style={{
+          height: "1px",
+          background: "#f3f4f6",
+          marginBottom: "13px",
+        }} />
+
+        {/* CTA buttons row */}
+        <div style={{ display: "flex", flexDirection: "row", gap: "8px", boxSizing: "border-box", width: "100%" }}>
+
+          {/* Get Directions */}
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${lab.latitude},${lab.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "none", flex: 1 }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                background: "#eff6ff",
+                color: "#1d4ed8",
+                border: "1.5px solid #bfdbfe",
+                borderRadius: "10px",
+                height: "38px",
+                fontSize: "11.5px",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                letterSpacing: "0.1px",
+                boxSizing: "border-box",
+                width: "100%",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#1d4ed8";
+                e.currentTarget.style.color = "white";
+                e.currentTarget.style.borderColor = "#1d4ed8";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#eff6ff";
+                e.currentTarget.style.color = "#1d4ed8";
+                e.currentTarget.style.borderColor = "#bfdbfe";
+              }}
+            >
+              <Navigation size={13} strokeWidth={2.5} />
+              Directions
+            </div>
+          </a>
+
+          {/* View Lab Details */}
+          <Link to={`/lab/${lab.id}`} style={{ textDecoration: "none", flex: 1 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                background: "#111827",
+                color: "white",
+                borderRadius: "10px",
+                height: "38px",
+                fontSize: "11.5px",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "background 0.15s ease",
+                letterSpacing: "0.1px",
+                boxSizing: "border-box",
+                width: "100%",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#0d9488"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#111827"; }}
+            >
+              View Details
+              <ChevronRight size={13} strokeWidth={2.5} />
+            </div>
+          </Link>
+        </div>
       </div>
-
-      {/* Address */}
-      <div className="flex items-start gap-2 mb-2">
-        <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-gray-600 leading-relaxed line-clamp-2">{lab.address}</p>
-      </div>
-
-      {/* Phone */}
-      {lab.contactNumber && (
-        <div className="flex items-center gap-2 mb-2">
-          <Phone className="w-3.5 h-3.5 text-gray-400" />
-          <p className="text-xs text-gray-600">{lab.contactNumber}</p>
-        </div>
-      )}
-
-      {/* Slots */}
-      {lab.slotCapacityOnline > 0 && (
-        <div className="flex items-center gap-2 mb-3">
-          <Clock className="w-3.5 h-3.5 text-emerald-500" />
-          <span className="text-xs font-semibold text-emerald-600">{lab.slotCapacityOnline} slots available</span>
-        </div>
-      )}
-
-      {/* CTA */}
-      <Link to={`/lab/${lab.id}`}>
-        <div className="w-full h-8 bg-gray-900 hover:bg-teal-700 rounded-xl text-white text-xs font-bold flex items-center justify-center transition-colors cursor-pointer">
-          View Lab Details →
-        </div>
-      </Link>
     </div>
   );
 }
@@ -167,9 +384,9 @@ function LabsMap({ userLocation, labs, selectedLab, className = "" }) {
         {/* User location marker */}
         {userLocation && (
           <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
-            <Popup className="custom-popup" closeButton={false}>
-              <div className="px-3 py-2 flex items-center gap-2 text-emerald-700 font-semibold text-sm">
-                <Navigation className="w-4 h-4" />
+            <Popup className="user-popup" closeButton={false}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", color: "#065f46", fontWeight: 600, fontSize: "13px" }}>
+                <Navigation size={15} color="#10b981" />
                 You are here
               </div>
             </Popup>
