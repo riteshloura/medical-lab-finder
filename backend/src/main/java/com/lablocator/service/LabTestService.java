@@ -68,4 +68,14 @@ public class LabTestService {
                 labTest.getHomeCollectionAvailable()
         );
     }
+
+    public String deleteTestsToLab(Long labId, Long testId) {
+        int deleted = labTestRepo.deleteByTestId(labId, testId);
+
+        if (deleted == 0) {
+            throw new RuntimeException("LabTest not found");
+        }
+
+        return "Test deleted successfully";
+    }
 }

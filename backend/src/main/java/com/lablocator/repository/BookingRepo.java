@@ -20,4 +20,7 @@ public interface BookingRepo extends JpaRepository<Booking, Long> {
 
     @Query("SELECT b FROM Booking b WHERE b.id = :bookingId AND b.lab.owner.id = :ownerId")
     Optional<Booking> findByIdAndLabOwnerId(Long bookingId, Long ownerId);
+
+    @Query("select b from Booking b where b.lab.owner.id=:id and b.lab.id=:labId")
+    List<Booking> findByLabIdAndLabOwnerId(Long labId, Long id);
 }

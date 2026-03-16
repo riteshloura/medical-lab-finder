@@ -69,7 +69,7 @@ public class BookingService {
 
     public List<Booking> getLabBooking(String email) {
         User labOwner = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("No Bookings found for this lab"));
+                .orElseThrow(() -> new RuntimeException("No Bookings found"));
 
         return bookingRepo.findAllByLabOwnerId(labOwner.getId());
     }
@@ -88,5 +88,12 @@ public class BookingService {
         }
 
         return bookingRepo.save(booking);
+    }
+
+    public List<Booking> getLabBookingByLabId(Long labId, String email) {
+        User labOwner = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return bookingRepo.findByLabIdAndLabOwnerId(labId, labOwner.getId());
     }
 }

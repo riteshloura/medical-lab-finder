@@ -29,6 +29,12 @@ public class BookingController {
     }
 
     @PreAuthorize("hasRole('LAB_OWNER')")
+    @GetMapping("/booking/{labId}")
+    public ResponseEntity<?> getLabBookingByLabId(@PathVariable Long labId, Authentication authentication) {
+        return ResponseEntity.ok(bookingService.getLabBookingByLabId(labId, authentication.getName()));
+    }
+
+    @PreAuthorize("hasRole('LAB_OWNER')")
     @PutMapping("/booking/{bookingId}/status")
     public ResponseEntity<?> updateBookingStatus(@PathVariable Long bookingId,
                                                  @Valid @RequestBody UpdateBookingStatusRequest req,

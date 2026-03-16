@@ -29,4 +29,10 @@ public class LabTestController {
     public ResponseEntity<GetLabTestResponse> createLabTest(@PathVariable Long labId, @RequestBody AddLabTestsRequest labTest) {
         return ResponseEntity.ok(labTestService.addTestsToLab(labId, labTest));
     }
+
+    @PreAuthorize("hasRole('LAB_OWNER')")
+    @DeleteMapping("/labs/{labId}/tests/{testId}")
+    public ResponseEntity<?> deleteLabTest(@PathVariable Long labId, @PathVariable Long testId) {
+        return ResponseEntity.ok(labTestService.deleteTestsToLab(labId, testId));
+    }
 }
