@@ -1,6 +1,7 @@
 package com.lablocator.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -40,7 +41,14 @@ public class SecurityConfig {
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/auth/**", "/api/labs").permitAll()
+                                                .requestMatchers("/api/auth/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET,
+                                                                "/api/labs/nearby",
+                                                                "/api/labs/search",
+                                                                "/api/labs/*",
+                                                                "/api/labs/*/tests",
+                                                                "/api/tests")
+                                                .permitAll()
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(
                                                 jwtFilter,

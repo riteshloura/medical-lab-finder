@@ -48,6 +48,13 @@ public class LabService {
         return labRepo.findById(id).orElse(null);
     }
 
+    public List<Lab> getOwnerLabs(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return labRepo.findAllByOwnerId(user.getId());
+    }
+
     public List<Lab> getLabsByTestAndLocation(String test, String location) {
         return labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
     }
@@ -72,5 +79,29 @@ public class LabService {
 
         labEntity = labRepo.save(labEntity);
         return ResponseEntity.ok().body(labEntity);
+    }
+
+    public ResponseEntity<?> updateLab(Long labId, CreateLabRequest lab, String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Lab labEntity = labRepo.findById(labId)
+                .orElseThrow(() -> new RuntimeException("Lab not found"));
+
+        if (!labEntity.getOwner().getId().equals(user.getId())) {
+            throw new RuntimeException("You are not allowed to update this lab");
+        }
+
+        labEntity.setName(lab.name());
+        labEntity.setDescription(lab.description());
+        labEntity.setAddress(lab.address());
+        labEntity.setCity(lab.city());
+        labEntity.setState(lab.state());
+        labEntity.setContactNumber(lab.contactNumber());
+        labEntity.setLongitude(lab.longitude());
+        labEntity.setLatitude(lab.latitude());
+        labEntity.setSlotCapacityOnline(lab.slotCapacityOnline());
+
+        return ResponseEntity.ok(labRepo.save(labEntity));
     }
 }

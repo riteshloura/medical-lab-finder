@@ -73,7 +73,7 @@ function Register() {
     setIsSubmitting(true);
 
     // Map userType to role
-    const role = formData.userType === "lab" ? "LAB" : "USER";
+    const role = formData.userType === "lab" ? "LAB_OWNER" : "USER";
 
     const result = await register(formData.fullName, formData.email, formData.password, role);
 

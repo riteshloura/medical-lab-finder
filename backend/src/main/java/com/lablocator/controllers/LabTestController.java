@@ -18,6 +18,7 @@ public class LabTestController {
     @Autowired
     private LabTestService labTestService;
 
+    @PreAuthorize("hasAnyRole('USER','LAB_OWNER')")
     @GetMapping("/labs/{labId}/tests")
     public ResponseEntity<List<GetLabTestResponse>> getLabTests(@PathVariable Long labId) {
         return ResponseEntity.ok(labTestService.getLabTests(labId));

@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, TestTube, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import api from "../api/axios";
 
 function Login() {
   const [isVisible, setIsVisible] = useState(false);
@@ -37,7 +36,7 @@ function Login() {
     const result = await login(email, password);
     
     if (result.success) {
-      navigate("/");
+      navigate(result.user?.role === "LAB_OWNER" ? "/owner/dashboard" : "/");
     } else {
       setErrorMessage(result.error);
     }

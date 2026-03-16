@@ -1,12 +1,12 @@
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Avatar } from "@heroui/react";
 import { motion } from "framer-motion";
-import { TestTube2, User, LogOut, Settings, FileText, Bell } from "lucide-react";
+import { TestTube2, User, LogOut, Settings, FileText, Bell, Building2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function Navbar() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLabOwner, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -81,7 +81,17 @@ function Navbar() {
                       </div>
                     </DropdownItem>
                     <DropdownItem key="profile" startContent={<User className="w-4 h-4" />}>My Profile</DropdownItem>
-                    <DropdownItem key="bookings" startContent={<FileText className="w-4 h-4" />}>My Bookings</DropdownItem>
+                    {isLabOwner ? (
+                      <DropdownItem
+                        key="dashboard"
+                        startContent={<Building2 className="w-4 h-4" />}
+                        onClick={() => navigate("/owner/dashboard")}
+                      >
+                        Owner Dashboard
+                      </DropdownItem>
+                    ) : (
+                      <DropdownItem key="bookings" startContent={<FileText className="w-4 h-4" />}>My Bookings</DropdownItem>
+                    )}
                     <DropdownItem key="settings" startContent={<Settings className="w-4 h-4" />}>Settings</DropdownItem>
                     <DropdownItem key="logout" color="danger" startContent={<LogOut className="w-4 h-4" />} onClick={handleLogout}>
                       Logout

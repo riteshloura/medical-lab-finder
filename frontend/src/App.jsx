@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LabDetails from "./pages/LabDetails";
+import OwnerDashboard from "./pages/OwnerDashboard";
+import OwnerRoute from "./components/OwnerRoute";
 
 function App() {
   return (
@@ -14,6 +16,14 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/lab/:labId" element={<LabDetails />} />
+          <Route
+            path="/owner/dashboard"
+            element={
+              <OwnerRoute>
+                <OwnerDashboard />
+              </OwnerRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

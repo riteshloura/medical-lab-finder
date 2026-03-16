@@ -71,7 +71,22 @@ public class BookingService {
         User labOwner = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("No Bookings found for this lab"));
 
-        System.out.println(labOwner);
-        return bookingRepo.findAllByLabId(labOwner.getId());
+        return bookingRepo.findAllByLabOwnerId(labOwner.getId());
+    }
+
+    public Booking updateBookingStatus(Long bookingId, String email, String status) {
+        User labOwner = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Booking booking = bookingRepo.findByIdAndLabOwnerId(bookingId, labOwner.getId())
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        try {
+            booking.setStatus(BookingStatus.valueOf(status.toUpperCase()));
+        } catch (IllegalArgumentException ex) {
+            throw new RuntimeException("Invalid booking status");
+        }
+
+        return bookingRepo.save(booking);
     }
 }
