@@ -6,6 +6,7 @@ import {
   ShieldCheck, TestTube2, UserRound, Home, LayoutDashboard,
   ChevronRight, X, Loader2, AlertCircle, CheckCheck,
   Beaker, Users, TrendingUp, Circle, Trash2,
+  Upload, FileText, ExternalLink,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -779,16 +780,26 @@ function OwnerDashboard() {
                           </div>
 
                           <div className="px-5 py-4 flex items-start gap-6">
-                            {/* Info */}
-                            <div className="flex-1 min-w-0 grid sm:grid-cols-3 gap-3">
-                              <InfoRow icon={UserRound} text={booking.user?.name || "Patient"} />
-                              <InfoRow icon={Clock3} text={booking.timeSlot || "No slot"} />
-                              <InfoRow
-                                icon={TestTube2}
-                                text={
-                                  booking.bookingTests?.map(i => i.labTest?.test?.name).filter(Boolean).join(", ") || "No tests"
-                                }
-                              />
+                            {/* Patient info + time */}
+                            <div className="flex-1 min-w-0 space-y-3">
+                              <div className="grid sm:grid-cols-2 gap-3">
+                                <InfoRow icon={UserRound} text={booking.user?.name || "Patient"} />
+                                <InfoRow icon={Clock3} text={booking.timeSlot || "No slot"} />
+                              </div>
+
+                              {/* Per-test report section */}
+                              {booking.bookingTests?.length > 0 && (
+                                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                                  <div className="px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tests &amp; Reports</p>
+                                  </div>
+                                  <div className="divide-y divide-gray-50">
+                                    {booking.bookingTests.map((bt) => (
+                                      <ReportPanel key={bt.id} bookingTest={bt} />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
                             {/* Status control */}
@@ -905,6 +916,132 @@ function Toast({ msg, onClose }) {
       <button onClick={onClose} className="opacity-60 hover:opacity-100 transition-opacity">
         <X className="w-3.5 h-3.5" />
       </button>
+    </div>
+  );
+}
+
+function ReportPanel({ bookingTest }) {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState(null);
+  const [message, setMessage] = useState(null);
+  const inputRef = useState(null);
+
+  const testName = bookingTest?.labTest?.test?.name || `Test #${bookingTest?.id}`;
+
+  const fetchReports = async () => {
+    try {
+      const res = await api.get(`/booking/${bookingTest.id}/reports`);
+      setReports(res.data);
+    } catch {
+      // silently ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchReports(); }, [bookingTest.id]);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setUploading(true);
+    setMessage(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      await api.post(`/booking/${bookingTest.id}/reports/upload`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setFile(null);
+      setMessage({ type: "success", text: "Report uploaded successfully." });
+      await fetchReports();
+    } catch (err) {
+      const data = err?.response?.data;
+      const text = typeof data === "string" ? data : data?.message || "Upload failed.";
+      setMessage({ type: "error", text });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="px-3 py-3">
+      {/* Test name + report count */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-6 h-6 bg-violet-50 border border-violet-200 rounded-md flex items-center justify-center flex-shrink-0">
+          <FlaskConical className="w-3.5 h-3.5 text-violet-500" />
+        </div>
+        <span className="text-xs font-bold text-gray-800">{testName}</span>
+        {!loading && (
+          <span className="ml-auto text-[10px] font-semibold text-gray-400">
+            {reports.length} report{reports.length !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* Uploaded reports list */}
+      {loading ? (
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
+          <Loader2 className="w-3 h-3 animate-spin" /> Loading reports…
+        </div>
+      ) : reports.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {reports.map((r, i) => (
+            <a
+              key={i}
+              href={r.reportURI}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+            >
+              <FileText className="w-3 h-3" />
+              Report {i + 1}
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-gray-400 mb-2">No reports uploaded yet.</p>
+      )}
+
+      {/* Upload section */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-2.5 py-1.5 rounded-lg transition-colors">
+            {file ? file.name : "Choose file…"}
+          </span>
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            className="hidden"
+            onChange={(e) => { setFile(e.target.files[0] || null); setMessage(null); }}
+          />
+        </label>
+        <button
+          onClick={handleUpload}
+          disabled={!file || uploading}
+          className="flex items-center gap-1 text-[11px] font-bold bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+        >
+          {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+          {uploading ? "Uploading…" : "Upload"}
+        </button>
+      </div>
+
+      {/* Inline message */}
+      {message && (
+        <div className={`mt-2 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${
+          message.type === "success"
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-red-50 text-red-600 border border-red-200"
+        }`}>
+          {message.type === "success"
+            ? <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+            : <AlertCircle className="w-3 h-3 flex-shrink-0" />}
+          {message.text}
+          <button onClick={() => setMessage(null)} className="ml-auto"><X className="w-3 h-3" /></button>
+        </div>
+      )}
     </div>
   );
 }
