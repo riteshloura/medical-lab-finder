@@ -2,6 +2,7 @@ package com.lablocator.service;
 
 import com.lablocator.dto.lab.CreateLabRequest;
 import com.lablocator.dto.lab.GetNearbyLabsResponse;
+import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.model.Lab;
 import com.lablocator.model.User;
 import com.lablocator.repository.LabRepo;
@@ -48,11 +49,32 @@ public class LabService {
         return labRepo.findById(id).orElse(null);
     }
 
-    public List<Lab> getOwnerLabs(String email) {
+    public List<GetOwnersLabResponse> getOwnerLabs(String email) {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return labRepo.findAllByOwnerId(user.getId());
+        List<Lab> labs;
+        labs = labRepo.findAllByOwnerId(user.getId());
+        List<GetOwnersLabResponse> res = new ArrayList<>();
+
+        for(Lab lab:labs){
+            res.add(new GetOwnersLabResponse(
+                    lab.getId(),
+                    lab.getName(),
+                    lab.getDescription(),
+                    lab.getAddress(),
+                    lab.getCity(),
+                    lab.getState(),
+                    lab.getLongitude(),
+                    lab.getLatitude(),
+                    lab.getContactNumber(),
+                    lab.getSlotCapacityOnline(),
+                    lab.getCreatedAt()
+            ));
+        }
+
+        return res;
+//        return labs;
     }
 
     public List<Lab> getLabsByTestAndLocation(String test, String location) {

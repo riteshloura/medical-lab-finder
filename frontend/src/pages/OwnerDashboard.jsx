@@ -94,6 +94,9 @@ function OwnerDashboard() {
       console.log(labsRes.data)
       setMasterTests(testsRes.data);
       setBookings(bookingsRes.data);
+
+      // --- TODO: Add DTO in backend for this api response ---
+      console.log("Booking response: ", bookingsRes.data)
       setSelectedLabId((cur) => cur ?? labsRes.data[0]?.id ?? null);
       setStatusDrafts(
         Object.fromEntries(bookingsRes.data.map((b) => [b.id, b.status]))

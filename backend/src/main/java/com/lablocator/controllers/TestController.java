@@ -1,7 +1,8 @@
 package com.lablocator.controllers;
 
-import com.lablocator.model.Test;
+import com.lablocator.dto.test.GetAllTestsResponse;
 import com.lablocator.repository.TestRepo;
+import com.lablocator.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,10 +15,10 @@ import java.util.List;
 @RequestMapping("/api")
 public class TestController {
     @Autowired
-    private TestRepo testRepo;
+    private TestService testService;
 
     @GetMapping("/tests")
-    public ResponseEntity<List<Test>> getAllTests() {
-        return ResponseEntity.ok(testRepo.findAll());
+    public ResponseEntity<List<GetAllTestsResponse>> getAllTests() {
+        return ResponseEntity.ok(testService.getAllTests());
     }
 }

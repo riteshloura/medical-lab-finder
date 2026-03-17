@@ -2,6 +2,7 @@ package com.lablocator.controllers;
 
 import com.lablocator.dto.lab.CreateLabRequest;
 import com.lablocator.dto.lab.GetNearbyLabsResponse;
+import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.model.Lab;
 import com.lablocator.service.LabService;
 import jakarta.validation.Valid;
@@ -38,7 +39,7 @@ public class LabController {
 
     @PreAuthorize("hasRole('LAB_OWNER')")
     @GetMapping("/labs/me")
-    public ResponseEntity<List<Lab>> getOwnerLabs(Authentication authentication) {
+    public ResponseEntity<List<GetOwnersLabResponse>> getOwnerLabs(Authentication authentication) {
         return ResponseEntity.ok(labService.getOwnerLabs(authentication.getName()));
     }
 

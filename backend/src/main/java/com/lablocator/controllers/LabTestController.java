@@ -32,7 +32,7 @@ public class LabTestController {
 
     @PreAuthorize("hasRole('LAB_OWNER')")
     @DeleteMapping("/labs/{labId}/tests/{testId}")
-    public ResponseEntity<?> deleteLabTest(@PathVariable Long labId, @PathVariable Long testId) {
+    public ResponseEntity<String> deleteLabTest(@PathVariable Long labId, @PathVariable Long testId) {
         return ResponseEntity.ok(labTestService.deleteTestsToLab(labId, testId));
     }
 }
