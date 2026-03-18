@@ -18,6 +18,7 @@ public class LabTestController {
     @Autowired
     private LabTestService labTestService;
 
+    @PreAuthorize("hasAnyRole('USER','LAB_OWNER')")
     @GetMapping("/labs/{labId}/tests")
     public ResponseEntity<List<GetLabTestResponse>> getLabTests(@PathVariable Long labId) {
         return ResponseEntity.ok(labTestService.getLabTests(labId));
@@ -27,5 +28,11 @@ public class LabTestController {
     @PostMapping("/labs/{labId}/tests")
     public ResponseEntity<GetLabTestResponse> createLabTest(@PathVariable Long labId, @RequestBody AddLabTestsRequest labTest) {
         return ResponseEntity.ok(labTestService.addTestsToLab(labId, labTest));
+    }
+
+    @PreAuthorize("hasRole('LAB_OWNER')")
+    @DeleteMapping("/labs/{labId}/tests/{testId}")
+    public ResponseEntity<String> deleteLabTest(@PathVariable Long labId, @PathVariable Long testId) {
+        return ResponseEntity.ok(labTestService.deleteTestsToLab(labId, testId));
     }
 }

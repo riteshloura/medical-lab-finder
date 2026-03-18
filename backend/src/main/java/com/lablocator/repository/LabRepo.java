@@ -10,6 +10,7 @@ import java.util.List;
 @Repository
 public interface LabRepo extends JpaRepository<Lab, Long> {
     List<Lab> findByCityIgnoreCase(String city);
+    List<Lab> findAllByOwnerId(Long ownerId);
 
     @Query(value = """
         SELECT * FROM (

@@ -2,6 +2,7 @@ package com.lablocator.service;
 
 import com.lablocator.dto.lab.CreateLabRequest;
 import com.lablocator.dto.lab.GetNearbyLabsResponse;
+import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.model.Lab;
 import com.lablocator.model.User;
 import com.lablocator.repository.LabRepo;
@@ -48,6 +49,34 @@ public class LabService {
         return labRepo.findById(id).orElse(null);
     }
 
+    public List<GetOwnersLabResponse> getOwnerLabs(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Lab> labs;
+        labs = labRepo.findAllByOwnerId(user.getId());
+        List<GetOwnersLabResponse> res = new ArrayList<>();
+
+        for(Lab lab:labs){
+            res.add(new GetOwnersLabResponse(
+                    lab.getId(),
+                    lab.getName(),
+                    lab.getDescription(),
+                    lab.getAddress(),
+                    lab.getCity(),
+                    lab.getState(),
+                    lab.getLongitude(),
+                    lab.getLatitude(),
+                    lab.getContactNumber(),
+                    lab.getSlotCapacityOnline(),
+                    lab.getCreatedAt()
+            ));
+        }
+
+        return res;
+//        return labs;
+    }
+
     public List<Lab> getLabsByTestAndLocation(String test, String location) {
         return labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
     }
@@ -72,5 +101,29 @@ public class LabService {
 
         labEntity = labRepo.save(labEntity);
         return ResponseEntity.ok().body(labEntity);
+    }
+
+    public ResponseEntity<?> updateLab(Long labId, CreateLabRequest lab, String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Lab labEntity = labRepo.findById(labId)
+                .orElseThrow(() -> new RuntimeException("Lab not found"));
+
+        if (!labEntity.getOwner().getId().equals(user.getId())) {
+            throw new RuntimeException("You are not allowed to update this lab");
+        }
+
+        labEntity.setName(lab.name());
+        labEntity.setDescription(lab.description());
+        labEntity.setAddress(lab.address());
+        labEntity.setCity(lab.city());
+        labEntity.setState(lab.state());
+        labEntity.setContactNumber(lab.contactNumber());
+        labEntity.setLongitude(lab.longitude());
+        labEntity.setLatitude(lab.latitude());
+        labEntity.setSlotCapacityOnline(lab.slotCapacityOnline());
+
+        return ResponseEntity.ok(labRepo.save(labEntity));
     }
 }

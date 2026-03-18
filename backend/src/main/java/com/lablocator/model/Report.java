@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +22,7 @@ public class Report {
     private Long id;
 
     private String reportURI;
+    private String publicId;  // for deleting file stored in cloudinary
 
     @ManyToOne
     @JoinColumn(name = "booking_test_id")
@@ -29,5 +31,8 @@ public class Report {
     @ManyToOne
     @JoinColumn(name = "uploaded_by")
     private User uploadedBy;
+
+    @CreationTimestamp
+    @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;
 }

@@ -1,4 +1,4 @@
-package com.lablocator.security;
+package com.lablocator.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

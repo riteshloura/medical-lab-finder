@@ -27,12 +27,14 @@ export const AuthProvider = ({ children }) => {
       const userData = {
         name: response.name,
         userId: response.userId,
+        email: response.email,
+        role: response.role,
       };
       
       saveAuthData(response.token, userData);
       setUser(userData);
       setLoading(false);
-      return { success: true };
+      return { success: true, user: userData };
     } catch (err) {
       setLoading(false);
       const errorMessage = err.response?.data?.message || err.response?.data || "Login failed. Please try again.";
@@ -73,6 +75,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     isAuthenticated: !!user,
+    isLabOwner: user?.role === "LAB_OWNER",
     login,
     register,
     logout,
