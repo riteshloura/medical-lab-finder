@@ -1,8 +1,8 @@
 package com.lablocator.controllers;
 
-import com.lablocator.model.Report;
-import com.lablocator.repository.ReportRepo;
+import com.lablocator.dto.report.GetReportsResponse;
 import com.lablocator.service.CloudinaryService;
+import com.lablocator.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,11 +19,11 @@ public class ReportController {
     @Autowired
     private CloudinaryService cloudinaryService;
     @Autowired
-    private ReportRepo reportRepo;
+    private ReportService reportService;
 
     @GetMapping("/booking/{bookingTestId}/reports")
-    public List<Report> getReports(@PathVariable Long bookingTestId) {
-        return reportRepo.findByBookingTestId(bookingTestId);
+    public List<GetReportsResponse> getReports(@PathVariable Long bookingTestId) {
+        return reportService.getReports(bookingTestId);
     }
 
     @PreAuthorize("hasRole('LAB_OWNER')")
@@ -32,5 +32,12 @@ public class ReportController {
                                                @PathVariable Long bookingTestId,
                                                Authentication authentication) {
         return ResponseEntity.ok(cloudinaryService.uploadReport(file, bookingTestId, authentication.getName()));
+    }
+
+    @PreAuthorize("hasRole('LAB_OWNER')")
+    @DeleteMapping("/booking/reports/{reportId}")
+    public ResponseEntity<String> deleteReport(@PathVariable Long reportId,
+                                               Authentication authentication) {
+        return ResponseEntity.ok(cloudinaryService.deleteReport(reportId, authentication.getName()));
     }
 }

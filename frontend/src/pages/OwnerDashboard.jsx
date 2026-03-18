@@ -924,9 +924,9 @@ function ReportPanel({ bookingTest }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deletingReportId, setDeletingReportId] = useState(null);
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState(null);
-  const inputRef = useState(null);
 
   const testName = bookingTest?.labTest?.test?.name || `Test #${bookingTest?.id}`;
 
@@ -934,6 +934,7 @@ function ReportPanel({ bookingTest }) {
     try {
       const res = await api.get(`/booking/${bookingTest.id}/reports`);
       setReports(res.data);
+      console.log(res.data)
     } catch {
       // silently ignore
     } finally {
@@ -965,6 +966,22 @@ function ReportPanel({ bookingTest }) {
     }
   };
 
+  const handleDeleteReport = async (reportId) => {
+    setDeletingReportId(reportId);
+    setMessage(null);
+    try {
+      await api.delete(`/booking/reports/${reportId}`);
+      setMessage({ type: "success", text: "Report deleted." });
+      await fetchReports();
+    } catch (err) {
+      const data = err?.response?.data;
+      const text = typeof data === "string" ? data : data?.message || "Delete failed.";
+      setMessage({ type: "error", text });
+    } finally {
+      setDeletingReportId(null);
+    }
+  };
+
   return (
     <div className="px-3 py-3">
       {/* Test name + report count */}
@@ -988,17 +1005,28 @@ function ReportPanel({ bookingTest }) {
       ) : reports.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {reports.map((r, i) => (
-            <a
-              key={i}
-              href={r.reportURI}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
-            >
-              <FileText className="w-3 h-3" />
-              Report {i + 1}
-              <ExternalLink className="w-2.5 h-2.5" />
-            </a>
+            <div key={r.id ?? i} className="inline-flex items-center gap-0.5 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+              <a
+                href={r.reportURI}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-100 px-2 py-1 transition-colors"
+              >
+                <FileText className="w-3 h-3" />
+                Report {i + 1}
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+              <button
+                onClick={() => handleDeleteReport(r.id)}
+                disabled={deletingReportId === r.id}
+                title="Delete report"
+                className="px-1.5 py-1 text-red-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors border-l border-blue-200"
+              >
+                {deletingReportId === r.id
+                  ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  : <X className="w-2.5 h-2.5" />}
+              </button>
+            </div>
           ))}
         </div>
       ) : (
@@ -1030,11 +1058,10 @@ function ReportPanel({ bookingTest }) {
 
       {/* Inline message */}
       {message && (
-        <div className={`mt-2 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${
-          message.type === "success"
+        <div className={`mt-2 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${message.type === "success"
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
             : "bg-red-50 text-red-600 border border-red-200"
-        }`}>
+          }`}>
           {message.type === "success"
             ? <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
             : <AlertCircle className="w-3 h-3 flex-shrink-0" />}

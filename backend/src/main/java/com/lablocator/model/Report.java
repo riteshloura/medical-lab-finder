@@ -22,6 +22,7 @@ public class Report {
     private Long id;
 
     private String reportURI;
+    private String publicId;  // for deleting file stored in cloudinary
 
     @ManyToOne
     @JoinColumn(name = "booking_test_id")

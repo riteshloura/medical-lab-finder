@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Map;
 
 @Service
@@ -57,16 +58,39 @@ public class CloudinaryService {
             );
 
             String reportURI = uploadResult.get("secure_url").toString();
+            String publicId = uploadResult.get("public_id").toString();
             Report report = new Report();
             report.setReportURI(reportURI);
             report.setUploadedBy(labOwner);
             report.setBookingTest(bookingTest);
+            report.setPublicId(publicId);
 
             reportRepo.save(report);
             return reportURI;
 
         } catch (Exception e) {
             throw new RuntimeException("File upload failed", e);
+        }
+    }
+
+    public String deleteReport(Long reportId, String email) {
+        try {
+            Report report = reportRepo.findById(reportId)
+                    .orElseThrow(() -> new RuntimeException("Booked test not found"));
+
+//            User user = userRepo.findByEmail(email)
+//                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            cloudinary.uploader().destroy(
+                    report.getPublicId(),
+                    ObjectUtils.asMap("resource_type", "raw")
+            );
+
+            reportRepo.delete(report);
+            return "Report deleted successfully";
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete report", e);
         }
     }
 }
