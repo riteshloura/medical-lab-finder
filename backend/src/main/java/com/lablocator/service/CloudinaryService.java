@@ -2,6 +2,8 @@ package com.lablocator.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.lablocator.exceptions.BadRequestException;
+import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.BookingTest;
 import com.lablocator.model.Report;
 import com.lablocator.model.User;
@@ -23,7 +25,7 @@ public class CloudinaryService {
     @Autowired
     private ReportRepo reportRepo;
     @Autowired
-    private UserRepo  userRepo;
+    private UserRepo userRepo;
     @Autowired
     private BookingTestRepo bookingTestRepo;
 
@@ -32,30 +34,31 @@ public class CloudinaryService {
     }
 
     public String uploadReport(MultipartFile file, Long bookingTestId, String email) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("No file provided for upload");
+        }
+
+        User labOwner = userRepo.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        BookingTest bookingTest = bookingTestRepo.findById(bookingTestId)
+                .orElseThrow(() -> new ResourceNotFoundException("BookingTest", bookingTestId));
+
+        // Preserve the original file extension so that Cloudinary's secure_url
+        // ends with e.g. ".pdf" or ".jpg" and browsers infer the correct content-type.
+        String originalFilename = file.getOriginalFilename();
+        String ext = "";
+        if (originalFilename != null && originalFilename.lastIndexOf('.') > 0) {
+            ext = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        }
+
         try {
-            User labOwner = userRepo.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            BookingTest bookingTest = bookingTestRepo.findById(bookingTestId)
-                    .orElseThrow(() -> new RuntimeException("Booked test not found"));
-
-            // Preserve the original file extension in the public_id so that
-            // Cloudinary's secure_url ends with e.g. ".pdf" or ".jpg" and
-            // browsers can infer the correct content-type when opening the link.
-            String originalFilename = file.getOriginalFilename();
-            String ext = "";
-            if (originalFilename != null && originalFilename.lastIndexOf('.') > 0) {
-                ext = originalFilename.substring(originalFilename.lastIndexOf('.'));
-            }
-
             Map uploadResult = cloudinary.uploader().upload(
                     file.getBytes(),
                     ObjectUtils.asMap(
                             "resource_type", "raw",
                             "folder", "lab_reports",
-                            "public_id", "booking_" + bookingTestId + ext
-                    )
-            );
+                            "public_id", "booking_" + bookingTestId + ext));
 
             String reportURI = uploadResult.get("secure_url").toString();
             String publicId = uploadResult.get("public_id").toString();
@@ -64,33 +67,30 @@ public class CloudinaryService {
             report.setUploadedBy(labOwner);
             report.setBookingTest(bookingTest);
             report.setPublicId(publicId);
-
             reportRepo.save(report);
+
             return reportURI;
 
+        } catch (IOException e) {
+            throw new BadRequestException("Failed to read uploaded file: " + e.getMessage());
         } catch (Exception e) {
-            throw new RuntimeException("File upload failed", e);
+            throw new RuntimeException("Cloudinary upload failed: " + e.getMessage(), e);
         }
     }
 
     public String deleteReport(Long reportId, String email) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Report", reportId));
+
         try {
-            Report report = reportRepo.findById(reportId)
-                    .orElseThrow(() -> new RuntimeException("Booked test not found"));
-
-//            User user = userRepo.findByEmail(email)
-//                    .orElseThrow(() -> new RuntimeException("User not found"));
-
             cloudinary.uploader().destroy(
                     report.getPublicId(),
-                    ObjectUtils.asMap("resource_type", "raw")
-            );
-
-            reportRepo.delete(report);
-            return "Report deleted successfully";
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete report", e);
+                    ObjectUtils.asMap("resource_type", "raw"));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete file from Cloudinary: " + e.getMessage(), e);
         }
+
+        reportRepo.delete(report);
+        return "Report deleted successfully";
     }
 }

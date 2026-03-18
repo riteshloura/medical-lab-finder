@@ -1,14 +1,15 @@
 package com.lablocator.service;
 
 import com.lablocator.dto.booking.CreateBookingRequest;
+import com.lablocator.exceptions.AccessDeniedException;
+import com.lablocator.exceptions.BadRequestException;
+import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.*;
 import com.lablocator.repository.BookingRepo;
 import com.lablocator.repository.LabRepo;
 import com.lablocator.repository.LabTestRepo;
 import com.lablocator.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -16,25 +17,22 @@ import java.util.List;
 
 @Service
 public class BookingService {
-    @Autowired
-    private BookingRepo bookingRepo;
-    @Autowired
-    private UserRepo userRepo;
-    @Autowired
-    private LabRepo labRepo;
-    @Autowired
-    private LabTestRepo labTestRepo;
+    @Autowired private BookingRepo bookingRepo;
+    @Autowired private UserRepo userRepo;
+    @Autowired private LabRepo labRepo;
+    @Autowired private LabTestRepo labTestRepo;
 
     public Booking createBooking(Long labId, String email, CreateBookingRequest req) {
-        // 1. Fetch the user by email (from JWT/Auth)
         User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // 2. Fetch the lab
         Lab lab = labRepo.findById(labId)
-                .orElseThrow(() -> new RuntimeException("Lab not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lab", labId));
 
-        // 3. Build the Booking first (without tests)
+        if (req.testIds() == null || req.testIds().isEmpty()) {
+            throw new BadRequestException("At least one test must be selected to create a booking");
+        }
+
         Booking booking = Booking.builder()
                 .user(user)
                 .lab(lab)
@@ -42,11 +40,11 @@ public class BookingService {
                 .status(BookingStatus.PENDING)
                 .build();
 
-        // 4. For each testId, find the LabTest for this specific lab and create a BookingTest
         List<BookingTest> bookingTests = new ArrayList<>();
         for (Long testId : req.testIds()) {
             LabTest labTest = labTestRepo.findByLabIdAndTestId(labId, testId)
-                    .orElseThrow(() -> new RuntimeException("Test with id " + testId + " not available in this lab"));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Test with id " + testId + " is not available in this lab"));
 
             BookingTest bookingTest = BookingTest.builder()
                     .booking(booking)
@@ -55,36 +53,33 @@ public class BookingService {
             bookingTests.add(bookingTest);
         }
 
-        // 5. Set the tests on the booking and save (CascadeType.ALL saves BookingTests too)
         booking.setBookingTests(bookingTests);
         return bookingRepo.save(booking);
     }
 
     public List<Booking> getUserBooking(String email) {
         User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return bookingRepo.findAllByUserId(user.getId());
     }
 
     public List<Booking> getLabBooking(String email) {
         User labOwner = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("No Bookings found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return bookingRepo.findAllByLabOwnerId(labOwner.getId());
     }
 
     public Booking updateBookingStatus(Long bookingId, String email, String status) {
         User labOwner = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Booking booking = bookingRepo.findByIdAndLabOwnerId(bookingId, labOwner.getId())
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
 
         try {
             booking.setStatus(BookingStatus.valueOf(status.toUpperCase()));
         } catch (IllegalArgumentException ex) {
-            throw new RuntimeException("Invalid booking status");
+            throw new BadRequestException("Invalid booking status: '" + status + "'. Allowed values: PENDING, CONFIRMED, COMPLETED, CANCELLED");
         }
 
         return bookingRepo.save(booking);
@@ -92,8 +87,7 @@ public class BookingService {
 
     public List<Booking> getLabBookingByLabId(Long labId, String email) {
         User labOwner = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return bookingRepo.findByLabIdAndLabOwnerId(labId, labOwner.getId());
     }
 }

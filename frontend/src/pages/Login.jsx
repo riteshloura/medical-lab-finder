@@ -21,7 +21,7 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    
+
     if (!email || !password) {
       setErrorMessage("Please fill in all fields");
       return;
@@ -32,32 +32,33 @@ function Login() {
     // console.log(data);
 
     setIsSubmitting(true);
-    
+
     const result = await login(email, password);
-    
+
     if (result.success) {
       navigate(result.user?.role === "LAB_OWNER" ? "/owner/dashboard" : "/");
     } else {
       setErrorMessage(result.error);
+      console.error("Error in login: ", result);
     }
-    
+
     setIsSubmitting(false);
   };
 
-//   const getLabs = async(e) => {
-//     e.preventDefault();
+  //   const getLabs = async(e) => {
+  //     e.preventDefault();
 
-//     const response = await api.get("/labs");
-//     const data = await response.data;
-//     console.log(data); 
-//   }
+  //     const response = await api.get("/labs");
+  //     const data = await response.data;
+  //     console.log(data); 
+  //   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex">
       {/* Left Side - Illustration */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 to-teal-500 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSI0Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
-        
+
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

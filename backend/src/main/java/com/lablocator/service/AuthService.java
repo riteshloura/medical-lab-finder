@@ -3,6 +3,8 @@ package com.lablocator.service;
 import com.lablocator.dto.auth.LoginRequest;
 import com.lablocator.dto.auth.LoginResponse;
 import com.lablocator.dto.auth.RegisterRequest;
+import com.lablocator.exceptions.BadRequestException;
+import com.lablocator.exceptions.ConflictException;
 import com.lablocator.model.Role;
 import com.lablocator.model.User;
 import com.lablocator.repository.UserRepo;
@@ -12,25 +14,23 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.Optional;
 
 @Service
 public class AuthService {
-    @Autowired
-    private UserRepo userRepo;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private JwtService jwtService;
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    @Autowired private UserRepo userRepo;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtService jwtService;
+    @Autowired private AuthenticationManager authenticationManager;
 
-    public String registerUser(@RequestBody RegisterRequest req) {
+    public String registerUser(RegisterRequest req) {
         if (userRepo.findByEmail(req.email()).isPresent()) {
-            System.out.println("User already exists");
-            throw new RuntimeException("User already exists");
+            throw new ConflictException("An account with email '" + req.email() + "' already exists");
+        }
+
+        try {
+            Role.valueOf(req.role());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid role: '" + req.role() + "'. Allowed values: USER, LAB_OWNER");
         }
 
         User user = new User();
@@ -44,19 +44,13 @@ public class AuthService {
     }
 
     public LoginResponse loginUser(LoginRequest req) {
+        // authenticationManager throws BadCredentialsException (handled by GlobalExceptionHandler → 401)
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        req.email(),
-                        req.password()
-                )
+                new UsernamePasswordAuthenticationToken(req.email(), req.password())
         );
 
         User user = userRepo.findByEmail(req.email())
-                .orElseThrow(() -> new RuntimeException("Invalid Credentials"));
-
-//        if (!passwordEncoder.matches(req.password(), user.getPassword())) {
-//            throw new RuntimeException("Invalid Credentials");
-//        }
+                .orElseThrow(() -> new BadRequestException("Invalid credentials"));
 
         String token = jwtService.generateToken(user);
         return new LoginResponse(
