@@ -37,6 +37,9 @@ public class Booking {
 //    @JsonIgnore
     private List<BookingTest> bookingTests;
 
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL)
+    private Review review;
+
     @CreationTimestamp
     @Column(name = "booking_date", updatable = false)
     private LocalDateTime bookingDate;

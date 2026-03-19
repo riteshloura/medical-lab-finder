@@ -28,6 +28,8 @@ public class Lab {
     private Double latitude;
     private String contactNumber;
     private Integer slotCapacityOnline;
+    private Integer totalReviews;
+    private Double avgRating;
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
@@ -36,6 +38,10 @@ public class Lab {
     @OneToMany(mappedBy = "lab")
     @JsonIgnore
     private List<LabTest> labTests;
+
+    @OneToMany(mappedBy = "lab")
+    @JsonIgnore
+    private List<Review> reviews;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
