@@ -2,6 +2,7 @@ package com.lablocator.service;
 
 import com.lablocator.dto.lab.AddLabTestsRequest;
 import com.lablocator.dto.lab.GetLabTestResponse;
+import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.Lab;
 import com.lablocator.model.LabTest;
 import com.lablocator.model.Test;
@@ -24,40 +25,31 @@ public class LabTestService {
     private TestRepo testRepo;
 
     public List<GetLabTestResponse> getLabTests(Long labId) {
-        List<LabTest> labTests = labTestRepo.findByLabId(labId);
-//        System.out.println(labTests);
-
         List<GetLabTestResponse> response = new ArrayList<>();
-
-        for (LabTest labTest : labTests) {
-
+        for (LabTest labTest : labTestRepo.findByLabId(labId)) {
             Test test = labTest.getTest();
-
             response.add(new GetLabTestResponse(
                     test.getName(),
                     test.getDescription(),
                     test.getId(),
                     labTest.getPrice(),
-                    labTest.getHomeCollectionAvailable()
-            ));
+                    labTest.getHomeCollectionAvailable()));
         }
-
         return response;
     }
 
     public GetLabTestResponse addTestsToLab(Long labId, AddLabTestsRequest req) {
         Lab lab = labRepo.findById(labId)
-                .orElseThrow(() -> new RuntimeException("Lab not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lab", labId));
 
         Test test = testRepo.findById(req.testId())
-                .orElseThrow(() -> new RuntimeException("Test not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Test", req.testId()));
 
         LabTest labTest = new LabTest();
         labTest.setLab(lab);
         labTest.setTest(test);
         labTest.setPrice(req.price());
         labTest.setHomeCollectionAvailable(req.homeCollectionAvailable());
-
         labTest = labTestRepo.save(labTest);
 
         return new GetLabTestResponse(
@@ -65,17 +57,14 @@ public class LabTestService {
                 test.getDescription(),
                 test.getId(),
                 labTest.getPrice(),
-                labTest.getHomeCollectionAvailable()
-        );
+                labTest.getHomeCollectionAvailable());
     }
 
     public String deleteTestsToLab(Long labId, Long testId) {
         int deleted = labTestRepo.deleteByTestId(labId, testId);
-
         if (deleted == 0) {
-            throw new RuntimeException("LabTest not found");
+            throw new ResourceNotFoundException("Lab test not found for labId=" + labId + ", testId=" + testId);
         }
-
         return "Test deleted successfully";
     }
 }

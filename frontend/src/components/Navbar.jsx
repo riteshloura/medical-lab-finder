@@ -90,7 +90,7 @@ function Navbar() {
                         Owner Dashboard
                       </DropdownItem>
                     ) : (
-                      <DropdownItem key="bookings" startContent={<FileText className="w-4 h-4" />}>My Bookings</DropdownItem>
+                      <DropdownItem key="bookings" startContent={<FileText className="w-4 h-4" />} onClick={() => navigate("/my-bookings")}>My Bookings</DropdownItem>
                     )}
                     <DropdownItem key="settings" startContent={<Settings className="w-4 h-4" />}>Settings</DropdownItem>
                     <DropdownItem key="logout" color="danger" startContent={<LogOut className="w-4 h-4" />} onClick={handleLogout}>

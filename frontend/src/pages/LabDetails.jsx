@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
   IndianRupee,
   Tag,
   CalendarCheck,
+  CalendarDays,
   ShoppingCart,
   X,
   Plus,
@@ -306,11 +307,10 @@ export default function LabDetails() {
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${
-                        activeCategory === cat
+                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${activeCategory === cat
                           ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
                           : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -458,17 +458,42 @@ export default function LabDetails() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="flex flex-col items-center text-center py-10"
                   >
-                    <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-5 border-4 border-emerald-100">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                    {/* Animated checkmark ring */}
+                    <div className="relative w-20 h-20 mb-5">
+                      <div className="absolute inset-0 bg-emerald-100 rounded-full animate-ping opacity-30" />
+                      <div className="relative w-20 h-20 bg-emerald-50 border-4 border-emerald-200 rounded-full flex items-center justify-center">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                      </div>
                     </div>
+
                     <h3 className="text-xl font-extrabold text-gray-900 mb-2">Booking Confirmed!</h3>
-                    <p className="text-sm text-gray-500 mb-6">Your appointment has been successfully booked.</p>
-                    <button
-                      onClick={closeDrawer}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-2.5 rounded-xl transition-colors"
-                    >
-                      Done
-                    </button>
+                    <p className="text-sm text-gray-500 mb-1">
+                      Your appointment has been booked at
+                    </p>
+                    <p className="text-sm font-bold text-emerald-600 mb-6">{lab?.name}</p>
+
+                    {/* Info box */}
+                    <div className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-6 text-left space-y-1">
+                      <p className="text-xs font-bold text-emerald-700">What happens next?</p>
+                      <p className="text-xs text-emerald-600">The lab will review and confirm your appointment. You can track the status in My Bookings.</p>
+                    </div>
+
+                    {/* CTAs */}
+                    <div className="flex flex-col gap-2.5 w-full">
+                      <Link
+                        to="/my-bookings"
+                        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors shadow-sm shadow-emerald-500/20"
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                        View My Bookings
+                      </Link>
+                      <button
+                        onClick={closeDrawer}
+                        className="w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        Back to Lab
+                      </button>
+                    </div>
                   </motion.div>
                 ) : (
                   <>
@@ -631,11 +656,10 @@ function TestCard({ test, idx, inCart, onToggle }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: idx * 0.04, duration: 0.3 }}
-      className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${
-        inCart
+      className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${inCart
           ? "border-emerald-400 shadow-md shadow-emerald-50"
           : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
-      }`}
+        }`}
     >
       {/* Selected badge */}
       {inCart && (
@@ -647,16 +671,14 @@ function TestCard({ test, idx, inCart, onToggle }) {
       )}
 
       {/* Accent bar */}
-      <div className={`h-0.5 bg-gradient-to-r transition-opacity ${
-        inCart ? "from-emerald-400 to-teal-400 opacity-100" : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
-      }`} />
+      <div className={`h-0.5 bg-gradient-to-r transition-opacity ${inCart ? "from-emerald-400 to-teal-400 opacity-100" : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
+        }`} />
 
       <div className="p-4">
         {/* Top row */}
         <div className="flex items-start gap-3 mb-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-            inCart ? "bg-emerald-50" : "bg-violet-50 group-hover:bg-violet-100"
-          }`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${inCart ? "bg-emerald-50" : "bg-violet-50 group-hover:bg-violet-100"
+            }`}>
             <FlaskConical className={`w-5 h-5 ${inCart ? "text-emerald-500" : "text-violet-500"}`} />
           </div>
           <div className="flex-1 min-w-0">
@@ -690,11 +712,10 @@ function TestCard({ test, idx, inCart, onToggle }) {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             onClick={onToggle}
-            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-              inCart
+            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${inCart
                 ? "bg-red-400 hover:bg-red-500"
                 : "bg-gray-900 hover:bg-emerald-500"
-            }`}
+              }`}
           >
             {inCart ? (
               <><Minus className="w-3 h-3" /> Remove</>
