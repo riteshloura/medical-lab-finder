@@ -108,6 +108,7 @@ function Home() {
       const res = await api.get("/booking/me");
       // Most recent 6 only
       setRecentBookings(res.data.slice(0, 6));
+      console.log(res);
     } catch (err) {
       setBookingsError("Failed to load bookings.");
     } finally {
@@ -591,9 +592,10 @@ function Home() {
                       {/* Booking cards */}
                       {!isLoadingBookings && !bookingsError && recentBookings.map((booking, idx) => {
                         const cfg = BOOKING_STATUS_CONFIG[booking.status] || {};
-                        const totalPrice = booking.bookingTests?.reduce((sum, bt) => sum + (bt.labTest?.price ?? 0), 0) ?? 0;
-                        const testNames = booking.bookingTests?.map((bt) => bt.labTest?.test?.name).filter(Boolean) ?? [];
-
+                        const totalPrice = booking.bookingTests?.reduce((sum, bt) => sum + (bt.price ?? 0), 0) ?? 0;
+                        const testNames = booking.bookingTests?.map((bt) => bt.name).filter(Boolean) ?? [];
+                        console.log("Total price: ", booking.bookingTests);
+                        console.log("Test names: ", testNames);
                         return (
                           <motion.div
                             key={booking.id}

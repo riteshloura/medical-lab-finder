@@ -26,6 +26,8 @@ import {
   Loader2,
   Timer,
   Trash2,
+  MessageSquare,
+  UserCircle2,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import api from "../api/axios";
@@ -66,6 +68,11 @@ export default function LabDetails() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState("");
 
+  /* reviews state */
+  const [reviews, setReviews] = useState([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
+  const [reviewsError, setReviewsError] = useState("");
+
   /* ── fetch lab ── */
   useEffect(() => {
     const fetchLab = async () => {
@@ -98,6 +105,23 @@ export default function LabDetails() {
       }
     };
     fetchTests();
+  }, [labId]);
+
+  /* ── fetch reviews ── */
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        setIsLoadingReviews(true);
+        const res = await api.get(`/lab/${labId}/review`);
+        setReviews(res.data);
+      } catch (err) {
+        console.error("Error fetching reviews:", err);
+        setReviewsError("Could not load reviews.");
+      } finally {
+        setIsLoadingReviews(false);
+      }
+    };
+    fetchReviews();
   }, [labId]);
 
   /* ── cart helpers ── */
@@ -386,8 +410,90 @@ export default function LabDetails() {
             </div>
           )}
         </motion.div>
-      </div>
 
+        {/* ── Reviews Section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.4 }}
+          className="mt-10"
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md shadow-amber-200">
+              <Star className="w-5 h-5 text-white fill-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900">Reviews</h2>
+              {!isLoadingReviews && (
+                <p className="text-xs text-gray-400">{reviews.length} review{reviews.length !== 1 ? "s" : ""}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Average rating summary */}
+          {!isLoadingReviews && reviews.length > 0 && lab?.avgRating > 0 && (
+            <div className="flex items-center gap-4 mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+              <div className="text-4xl font-black text-amber-600">
+                {Number(lab.avgRating).toFixed(1)}
+              </div>
+              <div>
+                <StarRow rating={lab.avgRating || 0} />
+                <p className="text-xs text-amber-700 font-semibold mt-1">
+                  Based on {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Loading skeleton */}
+          {isLoadingReviews && (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Sk className="w-9 h-9 rounded-full flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Sk className="w-1/3 h-4" />
+                      <Sk className="w-1/4 h-3" />
+                    </div>
+                  </div>
+                  <Sk className="w-full h-3" />
+                  <Sk className="w-3/4 h-3" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error */}
+          {!isLoadingReviews && reviewsError && (
+            <div className="flex flex-col items-center py-10 text-center">
+              <AlertCircle className="w-7 h-7 text-red-400 mb-2" />
+              <p className="text-sm text-gray-500">{reviewsError}</p>
+            </div>
+          )}
+
+          {/* No reviews empty state */}
+          {!isLoadingReviews && !reviewsError && reviews.length === 0 && (
+            <div className="flex flex-col items-center py-14 text-center bg-white rounded-3xl border border-dashed border-gray-200">
+              <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+                <MessageSquare className="w-7 h-7 text-amber-300" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700 mb-1">No reviews yet</p>
+              <p className="text-xs text-gray-400">Be the first to review this lab after your visit.</p>
+            </div>
+          )}
+
+          {/* Review cards */}
+          {!isLoadingReviews && !reviewsError && reviews.length > 0 && (
+            <div className="space-y-3">
+              {reviews.map((review, idx) => (
+                <ReviewCard key={review.rId ?? idx} review={review} />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
       {/* ── Floating Cart Button ── */}
       <AnimatePresence>
         {cart.length > 0 && !isDrawerOpen && (
@@ -744,6 +850,61 @@ function ErrorState({ message, onBack }) {
         <ArrowLeft className="w-4 h-4" />
         Go back
       </button>
+    </div>
+  );
+}
+
+function StarRow({ rating }) {
+  const fullStars = Math.floor(rating);
+  const decimal = rating % 1;
+  const halfStar = decimal >= 0.25 && decimal < 0.75;
+  const extraFull = decimal >= 0.75 ? 1 : 0;
+  
+  const totalFull = fullStars + extraFull;
+  const totalEmpty = 5 - totalFull - (halfStar ? 1 : 0);
+
+  return (
+    <div className="flex gap-0.5">
+      {[...Array(Math.max(0, totalFull))].map((_, i) => (
+        <Star key={`full-${i}`} className="w-4 h-4 fill-amber-400 text-amber-400" />
+      ))}
+      {halfStar && (
+        <div className="relative w-4 h-4">
+          <Star className="absolute inset-0 w-4 h-4 text-amber-400" />
+          <div className="absolute inset-0 overflow-hidden w-[50%]">
+            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+          </div>
+        </div>
+      )}
+      {[...Array(Math.max(0, totalEmpty))].map((_, i) => (
+        <Star key={`empty-${i}`} className="w-4 h-4 text-amber-200" />
+      ))}
+    </div>
+  );
+}
+
+function ReviewCard({ review }) {
+  // Format date correctly
+  const formattedDate = review.uploaded_at 
+    ? new Date(review.uploaded_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center flex-shrink-0 border border-emerald-100">
+            <UserCircle2 className="w-6 h-6 text-emerald-500 stroke-[1.5]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900">{review.user?.name || "Verified User"}</p>
+            {formattedDate && <p className="text-xs text-gray-400">{formattedDate}</p>}
+          </div>
+        </div>
+      </div>
+      <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-xl px-4 py-3">
+        {review.review}
+      </p>
     </div>
   );
 }

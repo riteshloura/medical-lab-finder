@@ -6,6 +6,7 @@ import {
   Loader2, AlertCircle, TestTube2, CheckCircle2,
   ArrowLeft, IndianRupee, Home, MapPin, Phone,
   ChevronRight, Download, RefreshCw, Search,
+  Star, MessageSquare, X
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
@@ -93,12 +94,12 @@ function ReportSection({ bookingTests }) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-gray-800 truncate">
-                    {bt.labTest?.test?.name || `Test #${bt.id}`}
+                    {bt.name || `Test #${bt.id}`}
                   </p>
                   {bt.labTest?.price != null && (
                     <p className="text-[11px] text-gray-400 flex items-center gap-0.5 mt-0.5">
                       <IndianRupee className="w-2.5 h-2.5" />
-                      {bt.labTest.price}
+                      {bt.price}
                     </p>
                   )}
                 </div>
@@ -143,16 +144,16 @@ function ReportSection({ bookingTests }) {
 
 // ── BookingCard ───────────────────────────────────────────────────────────────
 
-function BookingCard({ booking, index }) {
+function BookingCard({ booking, index, onReviewClick }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CONFIG[booking.status] || {};
 
   const totalPrice = booking.bookingTests?.reduce(
-    (sum, bt) => sum + (bt.labTest?.price ?? 0), 0
+    (sum, bt) => sum + (bt.price ?? 0), 0
   ) ?? 0;
 
   const testNames = booking.bookingTests
-    ?.map((bt) => bt.labTest?.test?.name)
+    ?.map((bt) => bt.name)
     .filter(Boolean) ?? [];
 
   const hasReports = booking.status === "COMPLETED";
@@ -262,18 +263,34 @@ function BookingCard({ booking, index }) {
 
           {/* ── Footer ── */}
           <div className="px-5 py-3 flex items-center justify-between">
-            {/* View lab link */}
-            {booking.lab?.id && (
-              <Link
-                to={`/lab/${booking.lab.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-              >
-                <Building2 className="w-3 h-3" />
-                View Lab
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            )}
+            <div className="flex items-center gap-4">
+              {/* View lab link */}
+              {booking.lab?.id && (
+                <Link
+                  to={`/lab/${booking.lab.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <Building2 className="w-3 h-3" />
+                  View Lab
+                  <ChevronRight className="w-3 h-3" />
+                </Link>
+              )}
+
+              {/* Review button for completed bookings */}
+              {booking.status === "COMPLETED" && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onReviewClick(booking);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg transition-colors"
+                >
+                  <Star className="w-3 h-3 fill-amber-500" />
+                  Write Review
+                </button>
+              )}
+            </div>
 
             {/* Expand toggle hint */}
             <button
@@ -352,6 +369,10 @@ export default function MyBookings() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Review modal state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
+
   const fetchBookings = () => {
     setLoading(true);
     setError(null);
@@ -374,10 +395,13 @@ export default function MyBookings() {
   const filtered = searchQuery.trim()
     ? tabFiltered.filter((b) => {
       const q = searchQuery.toLowerCase();
-      return (
-        b.lab?.name?.toLowerCase().includes(q) ||
-        b.bookingTests?.some((bt) => bt.labTest?.test?.name?.toLowerCase().includes(q))
+
+      const labName = b.lab?.name?.toLowerCase() || "";
+      const testMatch = b.bookingTests?.some(
+        (bt) => bt.name?.toLowerCase().includes(q)
       );
+
+      return labName.includes(q) || testMatch;
     })
     : tabFiltered;
 
@@ -446,8 +470,8 @@ export default function MyBookings() {
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-all ${active
-                        ? "border-emerald-500 text-emerald-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
                       }`}
                   >
                     {dot && (
@@ -519,9 +543,191 @@ export default function MyBookings() {
 
         {/* Cards */}
         {!loading && !error && filtered.map((booking, i) => (
-          <BookingCard key={booking.id} booking={booking} index={i} />
+          <BookingCard
+            key={booking.id}
+            booking={booking}
+            index={i}
+            onReviewClick={(b) => {
+              setSelectedBookingForReview(b);
+              setReviewModalOpen(true);
+            }}
+          />
         ))}
       </div>
+
+      {/* Review Modal */}
+      <AnimatePresence>
+        {reviewModalOpen && selectedBookingForReview && (
+          <ReviewModal
+            booking={selectedBookingForReview}
+            onClose={() => {
+              setReviewModalOpen(false);
+              setSelectedBookingForReview(null);
+            }}
+            onSuccess={() => {
+              setReviewModalOpen(false);
+              setSelectedBookingForReview(null);
+              // Optimistically UI update isn't perfectly needed, but could be done. 
+              // We'll just leave it as is, or refresh bookings if required
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── ReviewModal ───────────────────────────────────────────────────────────────
+
+function ReviewModal({ booking, onClose, onSuccess }) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async () => {
+    if (rating === 0) {
+      setError("Please select a rating.");
+      return;
+    }
+    if (!comment.trim()) {
+      setError("Please write a short review.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await api.post(`/booking/${booking.id}/review`, {
+        rating,
+        review: comment.trim()
+      });
+      onSuccess();
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        "Failed to submit review. You may have already reviewed this booking."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      />
+
+      {/* Dialog */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden z-10"
+      >
+        <div className="h-1.5 bg-gradient-to-r from-amber-400 to-orange-500" />
+
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-gray-900 leading-tight">Rate your visit</h3>
+              <p className="text-xs text-gray-500 font-medium">
+                {booking.lab?.name || "Lab"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl font-semibold">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Star Selection */}
+          <div className="flex flex-col items-center justify-center gap-3">
+            <p className="text-sm font-bold text-gray-700">How was your experience?</p>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setRating(star)}
+                  className="p-1 hover:scale-110 transition-transform focus:outline-none"
+                >
+                  <Star
+                    className={`w-9 h-9 transition-colors ${star <= (hoverRating || rating)
+                      ? "text-amber-400 fill-amber-400"
+                      : "text-gray-200 fill-gray-100"
+                      }`}
+                  />
+                </button>
+              ))}
+            </div>
+            {rating > 0 && (
+              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                {rating} out of 5 stars
+              </span>
+            )}
+          </div>
+
+          {/* Comment input */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              Write a review
+            </label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Tell others about your experience at this lab..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm min-h-[120px] outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 py-3 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 rounded-xl shadow-md shadow-amber-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {submitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
+            ) : (
+              <><MessageSquare className="w-4 h-4" /> Submit Review</>
+            )}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }

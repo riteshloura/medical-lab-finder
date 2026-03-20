@@ -399,7 +399,7 @@ function OwnerDashboard() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">{booking.user?.name || "Patient"}</p>
                             <p className="text-xs text-gray-500 truncate">
-                              {booking.bookingTests?.map(i => i.labTest?.test?.name).filter(Boolean).join(", ") || "No tests"}
+                              {booking.bookingTests?.map(i => i.name).filter(Boolean).join(", ") || "No tests"}
                             </p>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
@@ -928,7 +928,7 @@ function ReportPanel({ bookingTest }) {
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState(null);
 
-  const testName = bookingTest?.labTest?.test?.name || `Test #${bookingTest?.id}`;
+  const testName = bookingTest?.name || `Test #${bookingTest?.id}`;
 
   const fetchReports = async () => {
     try {
@@ -1059,8 +1059,8 @@ function ReportPanel({ bookingTest }) {
       {/* Inline message */}
       {message && (
         <div className={`mt-2 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${message.type === "success"
-            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-red-50 text-red-600 border border-red-200"
+          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+          : "bg-red-50 text-red-600 border border-red-200"
           }`}>
           {message.type === "success"
             ? <CheckCircle2 className="w-3 h-3 flex-shrink-0" />

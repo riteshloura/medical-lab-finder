@@ -1,6 +1,7 @@
 package com.lablocator.controllers;
 
 import com.lablocator.dto.booking.CreateBookingRequest;
+import com.lablocator.dto.booking.testResponse.GetUserBookingResponse;
 import com.lablocator.dto.booking.UpdateBookingStatusRequest;
 import com.lablocator.service.BookingService;
 import jakarta.validation.Valid;
@@ -10,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api")
 public class BookingController {
@@ -18,7 +21,7 @@ public class BookingController {
 
     @PreAuthorize("hasRole('USER')")
     @GetMapping("/booking/me")
-    public ResponseEntity<?> getUserBooking(Authentication authentication) {
+    public ResponseEntity<List<GetUserBookingResponse>> getUserBooking(Authentication authentication) {
         return ResponseEntity.ok(bookingService.getUserBooking(authentication.getName()));
     }
 

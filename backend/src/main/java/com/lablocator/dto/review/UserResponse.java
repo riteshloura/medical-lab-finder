@@ -2,6 +2,7 @@ package com.lablocator.dto.review;
 
 public record UserResponse(
         String name,
-        Long uId
+        Long id,
+        String email
 ) {
 }

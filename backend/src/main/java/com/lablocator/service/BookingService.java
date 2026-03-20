@@ -1,7 +1,10 @@
 package com.lablocator.service;
 
+import com.lablocator.dto.booking.testResponse.BookingTestResponse;
 import com.lablocator.dto.booking.CreateBookingRequest;
-import com.lablocator.exceptions.AccessDeniedException;
+import com.lablocator.dto.booking.testResponse.GetUserBookingResponse;
+import com.lablocator.dto.booking.testResponse.LabResponse;
+import com.lablocator.dto.review.UserResponse;
 import com.lablocator.exceptions.BadRequestException;
 import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.*;
@@ -57,16 +60,86 @@ public class BookingService {
         return bookingRepo.save(booking);
     }
 
-    public List<Booking> getUserBooking(String email) {
+    public List<GetUserBookingResponse> getUserBooking(String email) {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return bookingRepo.findAllByUserId(user.getId());
+
+        List<Booking> booking = bookingRepo.findAllByUserId(user.getId());
+
+        List<GetUserBookingResponse> res = new ArrayList<>();
+
+        for(Booking b: booking) {
+            List<BookingTestResponse> bookingTestResponse = new ArrayList<>();
+
+            for (BookingTest bt : b.getBookingTests()) {
+                bookingTestResponse.add(new BookingTestResponse(
+                        bt.getId(),
+                        bt.getLabTest().getTest().getName(),
+                        bt.getLabTest().getPrice()
+                ));
+            }
+
+            res.add(new GetUserBookingResponse(
+                    b.getId(),
+                    b.getStatus(),
+                    bookingTestResponse,
+                    new LabResponse(
+                            b.getLab().getId(),
+                            b.getLab().getName(),
+                            b.getLab().getCity()
+                    ),
+                    new UserResponse(
+                            user.getName(),
+                            user.getId(),
+                            user.getEmail()
+                    ),
+                    b.getTimeSlot(),
+                    b.getCreatedAt()
+            ));
+        }
+
+        return res;
     }
 
-    public List<Booking> getLabBooking(String email) {
+    public List<GetUserBookingResponse> getLabBooking(String email) {
         User labOwner = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return bookingRepo.findAllByLabOwnerId(labOwner.getId());
+
+        List<Booking> booking = bookingRepo.findAllByLabOwnerId(labOwner.getId());
+
+        List<GetUserBookingResponse> res = new ArrayList<>();
+
+        for(Booking b: booking) {
+            List<BookingTestResponse> bookingTestResponse = new ArrayList<>();
+
+            for (BookingTest bt : b.getBookingTests()) {
+                bookingTestResponse.add(new BookingTestResponse(
+                        bt.getId(),
+                        bt.getLabTest().getTest().getName(),
+                        bt.getLabTest().getPrice()
+                ));
+            }
+
+            res.add(new GetUserBookingResponse(
+                    b.getId(),
+                    b.getStatus(),
+                    bookingTestResponse,
+                    new LabResponse(
+                            b.getLab().getId(),
+                            b.getLab().getName(),
+                            b.getLab().getCity()
+                    ),
+                    new UserResponse(
+                            labOwner.getName(),
+                            labOwner.getId(),
+                            labOwner.getEmail()
+                    ),
+                    b.getTimeSlot(),
+                    b.getCreatedAt()
+            ));
+        }
+
+        return res;
     }
 
     public Booking updateBookingStatus(Long bookingId, String email, String status) {

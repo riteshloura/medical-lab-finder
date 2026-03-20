@@ -90,7 +90,8 @@ public class ReviewService {
                     r.getComment(),
                     new UserResponse(
                             r.getUser().getName(),
-                            r.getUser().getId()
+                            r.getUser().getId(),
+                            r.getUser().getEmail()
                     ),
                     r.getCreatedAt()
             ));
