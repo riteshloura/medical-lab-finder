@@ -189,7 +189,11 @@ function BookingCard({ booking, index, onReviewClick }) {
                 {booking.lab?.name || "Lab"}
               </p>
               <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                Booking #{booking.id}
+                Booking {new Date(booking.bookingDate).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
               </p>
             </div>
 
@@ -383,6 +387,7 @@ export default function MyBookings() {
         setError(typeof data === "string" ? data : data?.message || "Failed to load bookings.");
       })
       .finally(() => setLoading(false));
+    console.log("Booking: ", bookings)
   };
 
   useEffect(() => { fetchBookings(); }, []);

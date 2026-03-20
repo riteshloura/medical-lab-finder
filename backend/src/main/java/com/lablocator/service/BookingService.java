@@ -14,6 +14,7 @@ import com.lablocator.repository.LabTestRepo;
 import com.lablocator.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,8 @@ public class BookingService {
     @Autowired private LabRepo labRepo;
     @Autowired private LabTestRepo labTestRepo;
 
+
+    @Transactional
     public Booking createBooking(Long labId, String email, CreateBookingRequest req) {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -34,6 +37,10 @@ public class BookingService {
 
         if (req.testIds() == null || req.testIds().isEmpty()) {
             throw new BadRequestException("At least one test must be selected to create a booking");
+        }
+
+        if((lab.getSlotCapacityOnline()-req.testIds().size()) < 0) {
+            throw new BadRequestException("Insufficient available slots");
         }
 
         Booking booking = Booking.builder()
@@ -58,14 +65,22 @@ public class BookingService {
         }
 
         booking.setBookingTests(bookingTests);
-        return bookingRepo.save(booking);
+
+        booking = bookingRepo.save(booking);
+
+        int newSlotCapacity = lab.getSlotCapacityOnline()-req.testIds().size();
+        lab.setSlotCapacityOnline(newSlotCapacity);
+
+        labRepo.save(lab);
+
+        return booking;
     }
 
     public List<GetUserBookingResponse> getUserBooking(String email) {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        List<Booking> booking = bookingRepo.findAllByUserId(user.getId());
+        List<Booking> booking = bookingRepo.findAllByUserIdOrderByBookingDateDesc(user.getId());
 
         List<GetUserBookingResponse> res = new ArrayList<>();
 

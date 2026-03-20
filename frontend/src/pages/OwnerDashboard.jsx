@@ -97,7 +97,7 @@ function OwnerDashboard() {
       setBookings(bookingsRes.data);
 
       // --- TODO: Add DTO in backend for this api response ---
-      console.log("Booking response: ", bookingsRes.data)
+      // console.log("Booking response: ", bookingsRes.data)
       setSelectedLabId((cur) => cur ?? labsRes.data[0]?.id ?? null);
       setStatusDrafts(
         Object.fromEntries(bookingsRes.data.map((b) => [b.id, b.status]))
@@ -934,7 +934,7 @@ function ReportPanel({ bookingTest }) {
     try {
       const res = await api.get(`/booking/${bookingTest.id}/reports`);
       setReports(res.data);
-      console.log(res.data)
+      // console.log(res.data)
     } catch {
       // silently ignore
     } finally {

@@ -25,7 +25,8 @@ const BOOKING_STATUS_CONFIG = {
 
 function Home() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  // console.log("user: ", user)
 
   const [nearbyLabs, setNearbyLabs] = useState([]);
   const [isLoadingLabs, setIsLoadingLabs] = useState(true);
@@ -119,6 +120,11 @@ function Home() {
   const handleBookingsTab = () => {
     if (!isAuthenticated) {
       navigate("/login");
+      return;
+    }
+
+    if (user.role === "LAB_OWNER") {
+      navigate("/owner/dashboard");
       return;
     }
     setSidebarTab("bookings");
@@ -271,7 +277,7 @@ function Home() {
           >
             <CalendarDays className="w-3.5 h-3.5" />
             {isAuthenticated
-              ? isLoadingBookings ? "…" : `${recentBookings.length} Bookings`
+              ? isLoadingBookings ? "…" : `${recentBookings.length === 0 ? "" : recentBookings.length} Bookings`
               : "Bookings"}
             {/* Pending badge — only when tab is inactive */}
             {isAuthenticated && !(isSidebarOpen && sidebarTab === "bookings") &&
@@ -594,7 +600,7 @@ function Home() {
                         const cfg = BOOKING_STATUS_CONFIG[booking.status] || {};
                         const totalPrice = booking.bookingTests?.reduce((sum, bt) => sum + (bt.price ?? 0), 0) ?? 0;
                         const testNames = booking.bookingTests?.map((bt) => bt.name).filter(Boolean) ?? [];
-                        console.log("Total price: ", booking.bookingTests);
+                        // console.log("Total price: ", booking.bookingTests);
                         console.log("Test names: ", testNames);
                         return (
                           <motion.div
