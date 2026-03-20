@@ -50,6 +50,7 @@ public class BookingService {
                             "Test with id " + testId + " is not available in this lab"));
 
             BookingTest bookingTest = BookingTest.builder()
+                    .priceAtBooking(labTest.getPrice())
                     .booking(booking)
                     .labTest(labTest)
                     .build();
@@ -75,7 +76,7 @@ public class BookingService {
                 bookingTestResponse.add(new BookingTestResponse(
                         bt.getId(),
                         bt.getLabTest().getTest().getName(),
-                        bt.getLabTest().getPrice()
+                        bt.getPriceAtBooking()
                 ));
             }
 
@@ -116,7 +117,7 @@ public class BookingService {
                 bookingTestResponse.add(new BookingTestResponse(
                         bt.getId(),
                         bt.getLabTest().getTest().getName(),
-                        bt.getLabTest().getPrice()
+                        bt.getPriceAtBooking()
                 ));
             }
 
