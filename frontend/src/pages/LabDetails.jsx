@@ -39,6 +39,33 @@ const Sk = ({ className }) => (
   <div className={`animate-pulse bg-gray-200 rounded-lg ${className}`} />
 );
 
+// Generates 30-min slots between two LocalTime arrays e.g. [9,0] and [18,0]
+const generateSlots = (opening, closing) => {
+  if (!opening || !closing) return [];
+
+  // Normalize Spring's [H, m] array OR "HH:mm"/"HH:mm:ss" string
+  const toMinutes = (v) => {
+    if (Array.isArray(v)) return v[0] * 60 + v[1];
+    const parts = v.split(":").map(Number);
+    return parts[0] * 60 + parts[1];
+  };
+
+  const toLabel = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const hh = String(h % 12 || 12).padStart(2, "0");
+    const mm = String(m).padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    return { label: `${hh}:${mm} ${ampm}`, value: `${String(h).padStart(2, "0")}:${mm}` };
+  };
+
+  const start = toMinutes(opening);
+  const end = toMinutes(closing);
+  const slots = [];
+  for (let t = start; t < end; t += 30) slots.push(toLabel(t));
+  return slots;
+};
+
 /* ─────────────────────────────────────────
    Main page
 ───────────────────────────────────────── */
@@ -64,6 +91,7 @@ export default function LabDetails() {
 
   /* booking state */
   const [timeSlot, setTimeSlot] = useState("");
+  const [bookingDate, setBookingDate] = useState(""); // "today" | "tomorrow"
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState("");
@@ -80,6 +108,7 @@ export default function LabDetails() {
         setIsLoadingLab(true);
         const res = await api.get(`/labs/${labId}`);
         setLab(res.data);
+        console.log("LAb res: ", res)
       } catch (err) {
         console.error("Error fetching lab:", err);
         setLabError("Could not load lab details.");
@@ -146,6 +175,7 @@ export default function LabDetails() {
 
   /* ── submit booking ── */
   const handleBooking = async () => {
+    if (!bookingDate) { setBookingError("Please select a date."); return; }
     if (!timeSlot) {
       setBookingError("Please select a time slot.");
       return;
@@ -157,12 +187,30 @@ export default function LabDetails() {
     try {
       setIsBooking(true);
       setBookingError("");
-      // Java LocalTime expects "HH:MM:SS"
-      const formattedTime = timeSlot.length === 5 ? `${timeSlot}:00` : timeSlot;
+
+      // Build LocalDateTime string: "YYYY-MM-DDTHH:mm:ss"
+      const today = new Date();
+      const date = bookingDate === "tomorrow"
+        ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+        : new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const timeStr = timeSlot.length === 5 ? `${timeSlot}:00` : timeSlot;
+
       await api.post(`/labs/${labId}/booking`, {
         testIds: cart.map((t) => t.id),
-        timeSlot: formattedTime,
+        timeSlot: timeStr,           // LocalTime
+        bookingDate: `${dateStr}T${timeStr}`, // LocalDateTime
       });
+      // // Java LocalTime expects "HH:MM:SS"
+      // const formattedTime = timeSlot.length === 5 ? `${timeSlot}:00` : timeSlot;
+      // await api.post(`/labs/${labId}/booking`, {
+      //   testIds: cart.map((t) => t.id),
+      //   timeSlot: formattedTime,
+      // });
       setBookingSuccess(true);
       setCart([]);
     } catch (err) {
@@ -183,6 +231,7 @@ export default function LabDetails() {
     if (bookingSuccess) {
       setBookingSuccess(false);
       setTimeSlot("");
+      setBookingDate("");
     }
   };
 
@@ -332,8 +381,8 @@ export default function LabDetails() {
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
                       className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${activeCategory === cat
-                          ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
+                        ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
+                        : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
                         }`}
                     >
                       {cat}
@@ -656,27 +705,96 @@ export default function LabDetails() {
                       )}
                     </div>
 
-                    {/* Time slot picker */}
+                    {/* ── Date picker ── */}
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                        <CalendarDays className="w-4 h-4 text-emerald-500" />
+                        Select Date
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {["today", "tomorrow"].map((day) => {
+                          const date = day === "today" ? new Date() : new Date(Date.now() + 86400000);
+                          const label = day === "today" ? "Today" : "Tomorrow";
+                          const sub = date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => { setBookingDate(day); setBookingError(""); }}
+                              className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all ${bookingDate === day
+                                ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                                : "border-gray-200 bg-white hover:border-emerald-200"
+                                }`}
+                            >
+                              <span className={`text-sm font-bold ${bookingDate === day ? "text-emerald-700" : "text-gray-800"}`}>
+                                {label}
+                              </span>
+                              <span className={`text-xs mt-0.5 ${bookingDate === day ? "text-emerald-500" : "text-gray-400"}`}>
+                                {sub}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* ── Time slot picker ── */}
                     <div>
                       <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                         <Timer className="w-4 h-4 text-emerald-500" />
                         Select Time Slot
+                        {lab?.openingTime && lab?.closingTime && (
+                          <span className="ml-auto text-xs text-gray-400 font-normal flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {/* show human-readable hours */}
+                            {(() => {
+                              const fmt = (v) => {
+                                if (!v) return "";
+                                const [h, m] = Array.isArray(v) ? v : v.split(":").map(Number);
+                                const ampm = h >= 12 ? "PM" : "AM";
+                                return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
+                              };
+                              return `${fmt(lab.openingTime)} – ${fmt(lab.closingTime)}`;
+                            })()}
+                          </span>
+                        )}
                       </label>
-                      <input
-                        type="time"
-                        value={timeSlot}
-                        onChange={(e) => { setTimeSlot(e.target.value); setBookingError(""); }}
-                        className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all text-gray-800 font-semibold"
-                      />
-                      {lab?.openingTime && lab?.closingTime && (
-                        <p className="text-xs text-gray-400 mt-1.5">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          Lab hours: {lab.openingTime} – {lab.closingTime}
-                        </p>
+
+                      {lab?.openingTime && lab?.closingTime ? (
+                        (() => {
+                          const slots = generateSlots(lab.openingTime, lab.closingTime);
+                          return slots.length === 0 ? (
+                            <p className="text-xs text-gray-400">No slots available for this lab's hours.</p>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-2">
+                              {slots.map(({ label, value }) => (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() => { setTimeSlot(value); setBookingError(""); }}
+                                  className={`py-2 px-1 rounded-xl text-xs font-semibold border transition-all ${timeSlot === value
+                                    ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                                    : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
+                                    }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        // Fallback if lab has no hours set
+                        <input
+                          type="time"
+                          value={timeSlot}
+                          onChange={(e) => { setTimeSlot(e.target.value); setBookingError(""); }}
+                          className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all text-gray-800 font-semibold"
+                        />
                       )}
                     </div>
 
-                    {/* Error */}
+                    {/* ── Error ── */}
                     {bookingError && (
                       <motion.div
                         initial={{ opacity: 0, y: -4 }}
@@ -714,7 +832,7 @@ export default function LabDetails() {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleBooking}
-                    disabled={isBooking || cart.length === 0 || !timeSlot}
+                    disabled={isBooking || cart.length === 0 || !timeSlot || !bookingDate}
                     className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-md shadow-emerald-200 transition-all"
                   >
                     {isBooking ? (
@@ -763,8 +881,8 @@ function TestCard({ test, idx, inCart, onToggle }) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: idx * 0.04, duration: 0.3 }}
       className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${inCart
-          ? "border-emerald-400 shadow-md shadow-emerald-50"
-          : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
+        ? "border-emerald-400 shadow-md shadow-emerald-50"
+        : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
         }`}
     >
       {/* Selected badge */}
@@ -819,8 +937,8 @@ function TestCard({ test, idx, inCart, onToggle }) {
             whileTap={{ scale: 0.92 }}
             onClick={onToggle}
             className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${inCart
-                ? "bg-red-400 hover:bg-red-500"
-                : "bg-gray-900 hover:bg-emerald-500"
+              ? "bg-red-400 hover:bg-red-500"
+              : "bg-gray-900 hover:bg-emerald-500"
               }`}
           >
             {inCart ? (
@@ -859,7 +977,7 @@ function StarRow({ rating }) {
   const decimal = rating % 1;
   const halfStar = decimal >= 0.25 && decimal < 0.75;
   const extraFull = decimal >= 0.75 ? 1 : 0;
-  
+
   const totalFull = fullStars + extraFull;
   const totalEmpty = 5 - totalFull - (halfStar ? 1 : 0);
 
@@ -885,7 +1003,7 @@ function StarRow({ rating }) {
 
 function ReviewCard({ review }) {
   // Format date correctly
-  const formattedDate = review.uploaded_at 
+  const formattedDate = review.uploaded_at
     ? new Date(review.uploaded_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
     : '';
 

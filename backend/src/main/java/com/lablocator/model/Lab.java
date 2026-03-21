@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -30,6 +31,12 @@ public class Lab {
     private Integer slotCapacityOnline;
     private Integer totalReviews;
     private Double avgRating;
+
+    @Column(name = "opening_time")
+    private LocalTime openingTime;
+
+    @Column(name = "closing_time")
+    private LocalTime closingTime;
 
     @ManyToOne
     @JoinColumn(name = "owner_id")

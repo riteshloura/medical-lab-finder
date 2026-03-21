@@ -39,6 +39,18 @@ function StatusPill({ status }) {
   );
 }
 
+const formatTime = (time) => {
+  if (!time) return "—";
+
+  const [hour, minute] = time.split(":");
+  const h = Number(hour);
+
+  const formattedHour = h % 12 || 12;
+  const ampm = h >= 12 ? "PM" : "AM";
+
+  return `${formattedHour}:${minute} ${ampm}`;
+};
+
 // ── ReportSection — lazy loads only when card is expanded ────────────────────
 
 function ReportSection({ bookingTests }) {
@@ -218,7 +230,7 @@ function BookingCard({ booking, index, onReviewClick }) {
           {/* ── Info strip — always visible ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-5 pb-4 border-b border-gray-50">
             {/* Timeslot */}
-            <InfoChip icon={Clock3} label="Slot" value={booking.timeSlot || "—"} />
+            <InfoChip icon={Clock3} label="Slot" value={formatTime(booking.timeSlot) || "—"} />
 
             {/* Tests count */}
             <InfoChip

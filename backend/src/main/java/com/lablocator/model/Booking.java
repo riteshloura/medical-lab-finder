@@ -40,9 +40,9 @@ public class Booking {
     @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL)
     private Review review;
 
-    @CreationTimestamp
+//    @CreationTimestamp
     @Column(name = "booking_date", updatable = false)
-    private LocalDateTime bookingDate;
+    private LocalDateTime bookingDate; // also give tommarow date, fix entire lab_owner booking page
 
     private LocalTime timeSlot;
 

@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +31,14 @@ public class BookingService {
 
     @Transactional
     public Booking createBooking(Long labId, String email, CreateBookingRequest req) {
+        // Validate Booking Date
+        LocalDate today = LocalDate.now();
+        LocalDate bookingDate = req.bookingDate().toLocalDate();
+
+        if (!(bookingDate.equals(today) || bookingDate.equals(today.plusDays(1)))) {
+            throw new BadRequestException("Booking date must be today or tomorrow");
+        }
+
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -43,9 +53,30 @@ public class BookingService {
             throw new BadRequestException("Insufficient available slots");
         }
 
+        // Validate Time Slot
+        LocalTime timeSlot = req.timeSlot();
+
+        if (timeSlot.getMinute() % 30 != 0) {
+            throw new BadRequestException("Invalid time slot. Must be in 30-minute intervals");
+        }
+
+        if (timeSlot.isBefore(lab.getOpeningTime()) || timeSlot.isAfter(lab.getClosingTime())) {
+            throw new BadRequestException("Time slot must be within lab operating hours");
+        }
+
+        // Prevent past time booking (for today)
+        if (bookingDate.equals(today)) {
+            LocalTime now = LocalTime.now();
+
+            if (timeSlot.isBefore(now)) {
+                throw new BadRequestException("Time slot cannot be in the past");
+            }
+        }
+
         Booking booking = Booking.builder()
                 .user(user)
                 .lab(lab)
+                .bookingDate(req.bookingDate())
                 .timeSlot(req.timeSlot())
                 .status(BookingStatus.PENDING)
                 .build();

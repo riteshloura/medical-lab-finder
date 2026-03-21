@@ -18,6 +18,7 @@ import { useAuth } from "../context/AuthContext";
 const emptyLabForm = {
   name: "", description: "", address: "", city: "", state: "",
   latitude: "", longitude: "", contactNumber: "", slotCapacityOnline: "",
+  openingTime: "", closingTime: "",
 };
 
 const BOOKING_STATUSES = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"];
@@ -143,6 +144,8 @@ function OwnerDashboard() {
       address: lab.address ?? "", city: lab.city ?? "", state: lab.state ?? "",
       latitude: lab.latitude ?? "", longitude: lab.longitude ?? "",
       contactNumber: lab.contactNumber ?? "", slotCapacityOnline: lab.slotCapacityOnline ?? "",
+      openingTime: lab.openingTime ?? "",
+      closingTime: lab.closingTime ?? "",
     });
     setShowLabForm(true);
   };
@@ -556,6 +559,16 @@ function OwnerDashboard() {
                             <Field label="Longitude" value={labForm.longitude} onChange={(v) => setLabForm(p => ({ ...p, longitude: v }))} type="number" step="any" />
                             <Field label="Online slots" value={labForm.slotCapacityOnline} onChange={(v) => setLabForm(p => ({ ...p, slotCapacityOnline: v }))} type="number" />
                             <Field label="Address" value={labForm.address} onChange={(v) => setLabForm(p => ({ ...p, address: v }))} />
+                            <TimePicker
+                              label="Opening Time"
+                              value={labForm.openingTime}
+                              onChange={(v) => setLabForm(p => ({ ...p, openingTime: v }))}
+                            />
+                            <TimePicker
+                              label="Closing Time"
+                              value={labForm.closingTime}
+                              onChange={(v) => setLabForm(p => ({ ...p, closingTime: v }))}
+                            />
                           </div>
 
                           <div className="mb-5">
@@ -1069,6 +1082,87 @@ function ReportPanel({ bookingTest }) {
           <button onClick={() => setMessage(null)} className="ml-auto"><X className="w-3 h-3" /></button>
         </div>
       )}
+    </div>
+  );
+}
+
+function TimePicker({ label, value, onChange }) {
+  const normalize = (v) => {
+    if (!v) return "";
+    if (Array.isArray(v)) {
+      return `${String(v[0]).padStart(2, "0")}:${String(v[1]).padStart(2, "0")}`;
+    }
+    return v.substring(0, 5);
+  };
+
+  const toparts = (v) => {
+    const str = normalize(v);
+    if (!str) return { h: "", m: "", ampm: "AM" };
+    const [hStr, mStr] = str.split(":");
+    let h = parseInt(hStr, 10);
+    const m = mStr?.padStart(2, "0") ?? "00";
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return { h: String(h), m, ampm };
+  };
+
+  const initial = toparts(value);
+  const [h, setH] = useState(initial.h);
+  const [m, setM] = useState(initial.m);
+  const [ampm, setAmpm] = useState(initial.ampm);
+
+  // Sync inward when parent pre-fills (e.g. edit mode)
+  useEffect(() => {
+    const parsed = toparts(value);
+    setH(parsed.h);
+    setM(parsed.m);
+    setAmpm(parsed.ampm);
+  }, [normalize(value)]);
+
+  const emit = (nh, nm, na) => {
+    if (!nh || !nm) return;
+    let hour = parseInt(nh, 10);
+    if (na === "PM" && hour !== 12) hour += 12;
+    if (na === "AM" && hour === 12) hour = 0;
+    // Send as [H, m] array — matches Jackson's default LocalTime format
+    onChange([hour, parseInt(nm, 10)]);
+  };
+
+  const selectCls = "rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-emerald-400 focus:bg-white transition-colors cursor-pointer";
+
+  return (
+    <div>
+      <label className="block text-xs font-bold text-gray-700 mb-1.5">{label}</label>
+      <div className="flex gap-2">
+        <select
+          value={h}
+          onChange={(e) => { setH(e.target.value); emit(e.target.value, m, ampm); }}
+          className={`${selectCls} w-20`}
+        >
+          <option value="">hh</option>
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={String(n)}>{String(n).padStart(2, "0")}</option>
+          ))}
+        </select>
+        <select
+          value={m}
+          onChange={(e) => { setM(e.target.value); emit(h, e.target.value, ampm); }}
+          className={`${selectCls} w-20`}
+        >
+          <option value="">mm</option>
+          {["00", "15", "30", "45"].map((v) => (
+            <option key={v} value={v}>{v}</option>
+          ))}
+        </select>
+        <select
+          value={ampm}
+          onChange={(e) => { setAmpm(e.target.value); emit(h, m, e.target.value); }}
+          className={`${selectCls} w-20`}
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
     </div>
   );
 }

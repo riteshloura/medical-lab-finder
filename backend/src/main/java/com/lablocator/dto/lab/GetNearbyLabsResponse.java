@@ -1,5 +1,7 @@
 package com.lablocator.dto.lab;
 
+import java.time.LocalTime;
+
 public record GetNearbyLabsResponse(
         String name,
         String description,
@@ -10,6 +12,8 @@ public record GetNearbyLabsResponse(
         Long id,
         Double latitude,
         Double longitude,
-        Integer slotCapacityOnline
+        Integer slotCapacityOnline,
+        LocalTime openingTime,
+        LocalTime closingTime
 ) {
 }
