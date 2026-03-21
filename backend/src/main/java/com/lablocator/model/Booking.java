@@ -52,4 +52,12 @@ public class Booking {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    private CancelledBy cancelledBy;
+
+    @Column(length = 500)
+    private String cancellationReason;
+
+    private LocalDateTime statusUpdatedAt;
 }

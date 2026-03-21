@@ -1,5 +1,6 @@
 package com.lablocator.service;
 
+import com.lablocator.dto.booking.UpdateBookingStatusRequest;
 import com.lablocator.dto.booking.testResponse.BookingTestResponse;
 import com.lablocator.dto.booking.CreateBookingRequest;
 import com.lablocator.dto.booking.testResponse.GetUserBookingResponse;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,6 +81,7 @@ public class BookingService {
                 .bookingDate(req.bookingDate())
                 .timeSlot(req.timeSlot())
                 .status(BookingStatus.PENDING)
+                .statusUpdatedAt(LocalDateTime.now())
                 .build();
 
         List<BookingTest> bookingTests = new ArrayList<>();
@@ -141,7 +144,9 @@ public class BookingService {
                             user.getEmail()
                     ),
                     b.getTimeSlot(),
-                    b.getCreatedAt()
+                    b.getCreatedAt(),
+                    b.getCancellationReason(),
+                    b.getStatusUpdatedAt()
             ));
         }
 
@@ -177,30 +182,80 @@ public class BookingService {
                             b.getLab().getCity()
                     ),
                     new UserResponse(
-                            labOwner.getName(),
-                            labOwner.getId(),
-                            labOwner.getEmail()
+                            b.getUser().getName(),
+                            b.getUser().getId(),
+                            b.getUser().getEmail()
+//                            b.getUser().
+//                            labOwner.getName(),
+//                            labOwner.getId(),
+//                            labOwner.getEmail()
                     ),
                     b.getTimeSlot(),
-                    b.getCreatedAt()
+                    b.getCreatedAt(),
+                    b.getCancellationReason(),
+                    b.getStatusUpdatedAt()
             ));
         }
 
         return res;
     }
 
-    public Booking updateBookingStatus(Long bookingId, String email, String status) {
+    @Transactional
+    public Booking updateBookingStatus(Long bookingId, String email, UpdateBookingStatusRequest req) {
+
         User labOwner = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Booking booking = bookingRepo.findByIdAndLabOwnerId(bookingId, labOwner.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
 
+        BookingStatus currentStatus = booking.getStatus();
+        BookingStatus newStatus;
+
         try {
-            booking.setStatus(BookingStatus.valueOf(status.toUpperCase()));
+            newStatus = BookingStatus.valueOf(req.status().toUpperCase());
         } catch (IllegalArgumentException ex) {
-            throw new BadRequestException("Invalid booking status: '" + status + "'. Allowed values: PENDING, CONFIRMED, COMPLETED, CANCELLED");
+            throw new BadRequestException(
+                    "Invalid booking status: '" + req.status() +
+                            "'. Allowed values: PENDING, CONFIRMED, COMPLETED, CANCELLED"
+            );
         }
+
+        // 🚨 Terminal states (no further changes allowed)
+        if (currentStatus == BookingStatus.COMPLETED || currentStatus == BookingStatus.CANCELLED) {
+            throw new BadRequestException("Cannot change status once booking is " + currentStatus);
+        }
+
+        // 🔄 Valid transitions
+        boolean isValidTransition =
+                (currentStatus == BookingStatus.PENDING && (newStatus == BookingStatus.CONFIRMED || newStatus == BookingStatus.CANCELLED)) ||
+                        (currentStatus == BookingStatus.CONFIRMED && (newStatus == BookingStatus.COMPLETED || newStatus == BookingStatus.CANCELLED));
+
+        if (!isValidTransition) {
+            throw new BadRequestException(
+                    "Invalid status transition from " + currentStatus + " to " + newStatus
+            );
+        }
+
+        // ❗ Cancellation reason validation (for LAB_OWNER)
+        if (newStatus == BookingStatus.CANCELLED) {
+            if (req.cancellationReason() == null || req.cancellationReason().isBlank()) {
+                throw new BadRequestException("Cancellation reason is required");
+            }
+
+            booking.setCancellationReason(req.cancellationReason());
+            booking.setCancelledBy(CancelledBy.LAB_OWNER);
+
+            Lab lab = booking.getLab();
+            lab.setSlotCapacityOnline(
+                    lab.getSlotCapacityOnline() + booking.getBookingTests().size()
+            );
+            labRepo.save(lab);
+        }
+
+        // ✅ Update status
+        booking.setStatus(newStatus);
+        booking.setStatusUpdatedAt(LocalDateTime.now());
 
         return bookingRepo.save(booking);
     }

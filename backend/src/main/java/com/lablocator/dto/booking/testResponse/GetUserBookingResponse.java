@@ -14,6 +14,8 @@ public record GetUserBookingResponse(
         LabResponse lab,
         UserResponse user,
         LocalTime timeSlot,
-        LocalDateTime bookingDate
+        LocalDateTime bookingDate,
+        String cancellationReason,
+        LocalDateTime statusUpdatedAt
 ) {
 }

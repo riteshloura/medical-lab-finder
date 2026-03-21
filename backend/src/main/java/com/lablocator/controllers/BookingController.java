@@ -43,7 +43,7 @@ public class BookingController {
                                                  @Valid @RequestBody UpdateBookingStatusRequest req,
                                                  Authentication authentication) {
         return ResponseEntity.ok(
-                bookingService.updateBookingStatus(bookingId, authentication.getName(), req.status())
+                bookingService.updateBookingStatus(bookingId, authentication.getName(), req)
         );
     }
 
