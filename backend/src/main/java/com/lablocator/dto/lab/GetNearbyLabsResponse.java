@@ -14,6 +14,7 @@ public record GetNearbyLabsResponse(
         Double longitude,
         Integer slotCapacityOnline,
         LocalTime openingTime,
-        LocalTime closingTime
+        LocalTime closingTime,
+        Double distance
 ) {
 }

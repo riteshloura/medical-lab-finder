@@ -93,6 +93,7 @@ function Home() {
         `/labs/nearby?lat=${lat}&lng=${lng}&radius=1000`,
       );
       setNearbyLabs(response.data);
+      console.log("Nearby labs: ", response.data);
     } catch (error) {
       console.error("Error fetching nearby labs:", error);
       setLocationError("Failed to fetch nearby labs");
@@ -650,6 +651,12 @@ function Home() {
                                     <span>
                                       {lab.slotCapacityOnline} slots open
                                     </span>
+                                  </div>
+                                )}
+                                {lab.distance != null && (
+                                  <div className="flex items-center gap-1 text-xs text-blue-600 font-medium ml-auto">
+                                    <Navigation className="w-3 h-3" />
+                                    <span>≈ {lab.distance} km</span>
                                   </div>
                                 )}
                               </div>
