@@ -1,8 +1,8 @@
 package com.lablocator.controllers;
 
+import com.lablocator.dto.review.BookingReviewResponse;
 import com.lablocator.dto.review.CreateReviewRequest;
 import com.lablocator.dto.review.GetLabReviewsResponse;
-import com.lablocator.model.Review;
 import com.lablocator.service.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -29,5 +29,20 @@ public class ReviewController {
                                              Authentication authentication,
                                              @RequestBody CreateReviewRequest req) {
         return ResponseEntity.ok(reviewService.createLabReview(bookingId, authentication.getName(), req));
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/booking/{bookingId}/review")
+    public ResponseEntity<BookingReviewResponse> getBookingReview(@PathVariable Long bookingId,
+                                                                  Authentication authentication) {
+        return ResponseEntity.ok(reviewService.getBookingReview(bookingId, authentication.getName()));
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @PutMapping("/booking/{bookingId}/review")
+    public ResponseEntity<BookingReviewResponse> updateLabReview(@PathVariable Long bookingId,
+                                                                 Authentication authentication,
+                                                                 @RequestBody CreateReviewRequest req) {
+        return ResponseEntity.ok(reviewService.updateLabReview(bookingId, authentication.getName(), req));
     }
 }

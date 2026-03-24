@@ -1,11 +1,13 @@
 package com.lablocator.service;
 
+import com.lablocator.dto.booking.CancelBookingByUserRequest;
 import com.lablocator.dto.booking.UpdateBookingStatusRequest;
 import com.lablocator.dto.booking.testResponse.BookingTestResponse;
 import com.lablocator.dto.booking.CreateBookingRequest;
 import com.lablocator.dto.booking.testResponse.GetUserBookingResponse;
 import com.lablocator.dto.booking.testResponse.LabResponse;
 import com.lablocator.dto.review.UserResponse;
+import com.lablocator.exceptions.AccessDeniedException;
 import com.lablocator.exceptions.BadRequestException;
 import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.*;
@@ -14,8 +16,10 @@ import com.lablocator.repository.LabRepo;
 import com.lablocator.repository.LabTestRepo;
 import com.lablocator.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,10 +29,14 @@ import java.util.List;
 
 @Service
 public class BookingService {
-    @Autowired private BookingRepo bookingRepo;
-    @Autowired private UserRepo userRepo;
-    @Autowired private LabRepo labRepo;
-    @Autowired private LabTestRepo labTestRepo;
+    @Autowired
+    private BookingRepo bookingRepo;
+    @Autowired
+    private UserRepo userRepo;
+    @Autowired
+    private LabRepo labRepo;
+    @Autowired
+    private LabTestRepo labTestRepo;
 
 
     @Transactional
@@ -51,7 +59,7 @@ public class BookingService {
             throw new BadRequestException("At least one test must be selected to create a booking");
         }
 
-        if((lab.getSlotCapacityOnline()-req.testIds().size()) < 0) {
+        if ((lab.getSlotCapacityOnline() - req.testIds().size()) < 0) {
             throw new BadRequestException("Insufficient available slots");
         }
 
@@ -102,7 +110,7 @@ public class BookingService {
 
         booking = bookingRepo.save(booking);
 
-        int newSlotCapacity = lab.getSlotCapacityOnline()-req.testIds().size();
+        int newSlotCapacity = lab.getSlotCapacityOnline() - req.testIds().size();
         lab.setSlotCapacityOnline(newSlotCapacity);
 
         labRepo.save(lab);
@@ -118,7 +126,7 @@ public class BookingService {
 
         List<GetUserBookingResponse> res = new ArrayList<>();
 
-        for(Booking b: booking) {
+        for (Booking b : booking) {
             List<BookingTestResponse> bookingTestResponse = new ArrayList<>();
 
             for (BookingTest bt : b.getBookingTests()) {
@@ -161,7 +169,7 @@ public class BookingService {
 
         List<GetUserBookingResponse> res = new ArrayList<>();
 
-        for(Booking b: booking) {
+        for (Booking b : booking) {
             List<BookingTestResponse> bookingTestResponse = new ArrayList<>();
 
             for (BookingTest bt : b.getBookingTests()) {
@@ -265,4 +273,47 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return bookingRepo.findByLabIdAndLabOwnerId(labId, labOwner.getId());
     }
+
+    @Transactional
+    public Object cancelBookingByUser(Long bookingId, String email, CancelBookingByUserRequest req) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Booking booking = bookingRepo.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking does not exist"));
+
+        if (!booking.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You cannot cancel this booking");
+        }
+
+        BookingStatus currentStatus = booking.getStatus();
+
+        // 🚨 Terminal states
+        if (currentStatus == BookingStatus.CANCELLED) {
+            throw new BadRequestException("Booking is already cancelled");
+        }
+
+        if (currentStatus == BookingStatus.COMPLETED) {
+            throw new BadRequestException("Completed booking cannot be cancelled");
+        }
+
+        if (req.cancellationReason() == null || req.cancellationReason().isBlank()) {
+            throw new BadRequestException("Cancellation reason is required");
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setStatusUpdatedAt(LocalDateTime.now());
+        booking.setCancellationReason(req.cancellationReason());
+        booking.setCancelledBy(CancelledBy.USER);
+
+        // 🔄 Release slots
+        Lab lab = booking.getLab();
+        lab.setSlotCapacityOnline(
+                lab.getSlotCapacityOnline() + booking.getBookingTests().size()
+        );
+        labRepo.save(lab);
+
+        return bookingRepo.save(booking);
+    }
+
 }

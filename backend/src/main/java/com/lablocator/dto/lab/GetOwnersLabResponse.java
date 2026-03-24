@@ -14,6 +14,8 @@ public record GetOwnersLabResponse(
         Double latitude,
         String contactNumber,
         Integer slotCapacityOnline,
+        Integer totalReviews,
+        Double avgRating,
         LocalDateTime createdAt,
         LocalTime openingTime,
         LocalTime closingTime

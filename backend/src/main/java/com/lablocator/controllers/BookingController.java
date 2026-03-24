@@ -1,5 +1,6 @@
 package com.lablocator.controllers;
 
+import com.lablocator.dto.booking.CancelBookingByUserRequest;
 import com.lablocator.dto.booking.CreateBookingRequest;
 import com.lablocator.dto.booking.testResponse.GetUserBookingResponse;
 import com.lablocator.dto.booking.UpdateBookingStatusRequest;
@@ -53,5 +54,13 @@ public class BookingController {
                                            Authentication authentication,
                                            @RequestBody CreateBookingRequest req) {
         return ResponseEntity.ok(bookingService.createBooking(labId, authentication.getName(), req));
+    }
+
+    @PreAuthorize("hasRole('USER')")
+    @PostMapping("/booking/{bookingId}/cancel")
+    public ResponseEntity<?> cancelBookingByUser(@PathVariable Long bookingId,
+                                                 Authentication authentication,
+                                                 @RequestBody CancelBookingByUserRequest req) {
+        return ResponseEntity.ok(bookingService.cancelBookingByUser(bookingId, authentication.getName(), req));
     }
 }

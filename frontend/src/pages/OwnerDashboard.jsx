@@ -31,6 +31,7 @@ import {
   CalendarCheck,
   Ban,
   CircleCheck,
+  Star,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -85,6 +86,7 @@ const STATUS_CONFIG = {
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "labs", label: "My Labs", icon: Building2 },
+  { id: "reviews", label: "Reviews", icon: Star },
   { id: "tests", label: "Test Catalog", icon: Beaker },
   { id: "bookings", label: "Bookings", icon: CalendarDays },
 ];
@@ -163,6 +165,10 @@ function OwnerDashboard() {
   const [cancelReasons, setCancelReasons] = useState({});
   // Per-booking: whether the cancel reason input is open
   const [cancelOpen, setCancelOpen] = useState({});
+  // Reviews state
+  const [labReviews, setLabReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState(null);
 
   const { user } = useAuth();
 
@@ -229,6 +235,7 @@ function OwnerDashboard() {
         api.get("/booking"),
       ]);
       setLabs(labsRes.data);
+      console.log("Loaded labs:", labsRes.data);
       setMasterTests(testsRes.data);
       setBookings(bookingsRes.data);
       setSelectedLabId((cur) => cur ?? labsRes.data[0]?.id ?? null);
@@ -261,11 +268,33 @@ function OwnerDashboard() {
     }
   };
 
+  const loadLabReviews = async (labId) => {
+    if (!labId) {
+      setLabReviews([]);
+      return;
+    }
+    try {
+      setReviewsLoading(true);
+      setReviewMessage(null);
+      const res = await api.get(`/lab/${labId}/review`);
+      setLabReviews(res.data || []);
+    } catch (err) {
+      setReviewMessage({
+        type: "error",
+        text: getErrorMessage(err, "Failed to load reviews."),
+      });
+      setLabReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadOwnerData();
   }, []);
   useEffect(() => {
     loadSelectedLabTests(selectedLabId);
+    loadLabReviews(selectedLabId);
   }, [selectedLabId]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -1153,6 +1182,157 @@ function OwnerDashboard() {
                                 </div>
                               </div>
                             ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── REVIEWS ── */}
+              {activeView === "reviews" && (
+                <div className="space-y-6">
+                  {!selectedLab ? (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center">
+                      <Star className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm font-bold text-gray-600">
+                        No lab selected
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1 mb-5">
+                        Select or create a lab first to view its reviews
+                      </p>
+                      <button
+                        onClick={() => setActiveView("labs")}
+                        className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 mx-auto"
+                      >
+                        Go to Labs <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 md:col-span-2">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h2 className="text-sm font-bold text-gray-900">
+                                Reviews
+                              </h2>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Feedback from patients for {selectedLab.name}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5">
+                              <Star className="w-3.5 h-3.5 fill-amber-500" />
+                              {selectedLab.avgRating?.toFixed?.(1) ?? "—"}
+                              <span className="text-gray-400 font-semibold">
+                                ({selectedLab.totalReviews ?? 0})
+                              </span>
+                            </div>
+                          </div>
+
+                          {reviewMessage && (
+                            <Toast
+                              msg={reviewMessage}
+                              onClose={() => setReviewMessage(null)}
+                            />
+                          )}
+
+                          {reviewsLoading ? (
+                            <div className="py-12 text-center text-sm text-gray-500 flex flex-col items-center gap-3">
+                              <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                              Loading reviews…
+                            </div>
+                          ) : labReviews.length === 0 ? (
+                            <div className="py-12 text-center text-sm text-gray-500 flex flex-col items-center gap-2">
+                              <Star className="w-6 h-6 text-gray-300" />
+                              No reviews yet
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-gray-100">
+                              {labReviews.map((r) => (
+                                <div
+                                  key={r.id}
+                                  className="py-4 flex items-start gap-3"
+                                >
+                                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0">
+                                    <UserRound className="w-4 h-4 text-emerald-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-bold text-gray-900 truncate">
+                                        {r.user?.name || "User"}
+                                      </p>
+                                      <span className="text-[11px] text-gray-400 font-semibold">
+                                        {r.user?.email || ""}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-amber-500 text-xs font-bold mt-0.5">
+                                      {Array.from({ length: 5 }).map(
+                                        (_, idx) => (
+                                          <Star
+                                            key={idx}
+                                            className={`w-3 h-3 ${idx < (r.rating || 0) ? "fill-amber-400" : "text-gray-200"}`}
+                                          />
+                                        ),
+                                      )}
+                                      <span className="ml-1 text-[11px] text-gray-400">
+                                        {new Date(
+                                          r.uploaded_at,
+                                        ).toLocaleDateString("en-IN", {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        })}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">
+                                      {r.review}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                          <h3 className="text-sm font-bold text-gray-900">
+                            Lab snapshot
+                          </h3>
+                          <div className="space-y-2 text-sm text-gray-700">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-gray-400" />
+                              <span className="font-semibold">
+                                {selectedLab.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <MapPin className="w-4 h-4" />
+                              <span>
+                                {selectedLab.city}, {selectedLab.state}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <Phone className="w-4 h-4" />
+                              <span>{selectedLab.contactNumber || "—"}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <Clock3 className="w-4 h-4" />
+                              <span>
+                                {selectedLab.slotCapacityOnline} online slots
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <Beaker className="w-4 h-4" />
+                              <span>
+                                {selectedLabTests.length} tests listed
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-700 font-semibold">
+                            Ratings auto-refresh when new reviews are added or
+                            updated.
+                          </div>
                         </div>
                       </div>
                     </>

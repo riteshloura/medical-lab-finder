@@ -49,7 +49,8 @@ public class LabService {
             res.add(new GetOwnersLabResponse(
                     lab.getId(), lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getLongitude(), lab.getLatitude(),
-                    lab.getContactNumber(), lab.getSlotCapacityOnline(), lab.getCreatedAt(),
+                    lab.getContactNumber(), lab.getSlotCapacityOnline(), lab.getTotalReviews(),
+                    lab.getAvgRating(), lab.getCreatedAt(),
                     lab.getOpeningTime(), lab.getClosingTime()
             ));
         }
