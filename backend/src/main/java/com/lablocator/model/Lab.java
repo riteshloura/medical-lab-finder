@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -28,6 +29,14 @@ public class Lab {
     private Double latitude;
     private String contactNumber;
     private Integer slotCapacityOnline;
+    private Integer totalReviews;
+    private Double avgRating;
+
+    @Column(name = "opening_time")
+    private LocalTime openingTime;
+
+    @Column(name = "closing_time")
+    private LocalTime closingTime;
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
@@ -36,6 +45,10 @@ public class Lab {
     @OneToMany(mappedBy = "lab")
     @JsonIgnore
     private List<LabTest> labTests;
+
+    @OneToMany(mappedBy = "lab")
+    @JsonIgnore
+    private List<Review> reviews;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

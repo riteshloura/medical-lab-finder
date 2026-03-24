@@ -37,9 +37,12 @@ public class Booking {
 //    @JsonIgnore
     private List<BookingTest> bookingTests;
 
-    @CreationTimestamp
+    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL)
+    private Review review;
+
+//    @CreationTimestamp
     @Column(name = "booking_date", updatable = false)
-    private LocalDateTime bookingDate;
+    private LocalDateTime bookingDate; // also give tommarow date, fix entire lab_owner booking page
 
     private LocalTime timeSlot;
 
@@ -49,4 +52,12 @@ public class Booking {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    private CancelledBy cancelledBy;
+
+    @Column(length = 500)
+    private String cancellationReason;
+
+    private LocalDateTime statusUpdatedAt;
 }

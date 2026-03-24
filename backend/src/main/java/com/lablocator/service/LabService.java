@@ -29,7 +29,7 @@ public class LabService {
                     lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getContactNumber(),
                     lab.getId(), lab.getLatitude(), lab.getLongitude(),
-                    lab.getSlotCapacityOnline()
+                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime()
             ));
         }
         return res;
@@ -49,7 +49,9 @@ public class LabService {
             res.add(new GetOwnersLabResponse(
                     lab.getId(), lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getLongitude(), lab.getLatitude(),
-                    lab.getContactNumber(), lab.getSlotCapacityOnline(), lab.getCreatedAt()
+                    lab.getContactNumber(), lab.getSlotCapacityOnline(), lab.getTotalReviews(),
+                    lab.getAvgRating(), lab.getCreatedAt(),
+                    lab.getOpeningTime(), lab.getClosingTime()
             ));
         }
         return res;
@@ -74,6 +76,8 @@ public class LabService {
         labEntity.setLatitude(lab.latitude());
         labEntity.setSlotCapacityOnline(lab.slotCapacityOnline());
         labEntity.setOwner(user);
+        labEntity.setOpeningTime(lab.openingTime());
+        labEntity.setClosingTime(lab.closingTime());
 
         return ResponseEntity.ok(labRepo.save(labEntity));
     }
@@ -98,6 +102,8 @@ public class LabService {
         labEntity.setLongitude(lab.longitude());
         labEntity.setLatitude(lab.latitude());
         labEntity.setSlotCapacityOnline(lab.slotCapacityOnline());
+        labEntity.setOpeningTime(lab.openingTime());
+        labEntity.setClosingTime(lab.closingTime());
 
         return ResponseEntity.ok(labRepo.save(labEntity));
     }

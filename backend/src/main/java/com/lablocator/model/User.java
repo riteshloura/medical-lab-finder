@@ -48,4 +48,8 @@ public class User {
     @OneToMany(mappedBy = "user")
     @JsonIgnore
     private List<Booking> bookings;
+
+    @OneToMany(mappedBy = "user")
+    @JsonIgnore
+    private List<Review> reviews;
 }

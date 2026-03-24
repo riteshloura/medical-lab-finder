@@ -21,6 +21,8 @@ public class BookingTest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Double priceAtBooking;
+
     @ManyToOne
     @JoinColumn(name = "booking_id")
     @JsonIgnore

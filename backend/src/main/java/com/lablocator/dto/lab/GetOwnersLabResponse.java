@@ -1,6 +1,7 @@
 package com.lablocator.dto.lab;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 public record GetOwnersLabResponse(
         Long id,
@@ -13,6 +14,10 @@ public record GetOwnersLabResponse(
         Double latitude,
         String contactNumber,
         Integer slotCapacityOnline,
-        LocalDateTime createdAt
+        Integer totalReviews,
+        Double avgRating,
+        LocalDateTime createdAt,
+        LocalTime openingTime,
+        LocalTime closingTime
 ) {
 }

@@ -1,6 +1,9 @@
 package com.lablocator.dto.lab;
 
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
+
+import java.time.LocalTime;
 
 public record CreateLabRequest(
 
@@ -40,5 +43,8 @@ public record CreateLabRequest(
 
         @NotBlank(message = "State is required")
         @Size(max = 100)
-        String state
+        String state,
+
+        LocalTime openingTime,
+        LocalTime closingTime
 ) {}
