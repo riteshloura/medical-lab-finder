@@ -1,5 +1,6 @@
 package com.lablocator.controllers;
 
+import com.lablocator.dto.booking.BookingStatusUpdateResult;
 import com.lablocator.dto.booking.CancelBookingByUserRequest;
 import com.lablocator.dto.booking.CreateBookingRequest;
 import com.lablocator.dto.booking.testResponse.GetUserBookingResponse;
@@ -43,9 +44,11 @@ public class BookingController {
     public ResponseEntity<?> updateBookingStatus(@PathVariable Long bookingId,
                                                  @Valid @RequestBody UpdateBookingStatusRequest req,
                                                  Authentication authentication) {
-        return ResponseEntity.ok(
-                bookingService.updateBookingStatus(bookingId, authentication.getName(), req)
-        );
+        BookingStatusUpdateResult result = bookingService.updateBookingStatus(bookingId, authentication.getName(), req);
+
+        return ResponseEntity.ok()
+            .header("X-Email-Sent", String.valueOf(result.emailSent()))
+            .body(result.booking());
     }
 
     @PreAuthorize("hasRole('USER')")

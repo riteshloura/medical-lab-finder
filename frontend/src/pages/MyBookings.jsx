@@ -25,6 +25,9 @@ import {
   Star,
   MessageSquare,
   X,
+  Ban,
+  UserX,
+  ShieldAlert,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
@@ -94,28 +97,72 @@ function StatusPill({ status }) {
 
 const formatTime = (time) => {
   if (!time) return "—";
-
   const [hour, minute] = time.split(":");
   const h = Number(hour);
-
   const formattedHour = h % 12 || 12;
   const ampm = h >= 12 ? "PM" : "AM";
-
   return `${formattedHour}:${minute} ${ampm}`;
 };
+
+// ── CancellationNotice ────────────────────────────────────────────────────────
+
+function CancellationNotice({ cancellationReason, cancelledBy }) {
+  if (!cancellationReason && !cancelledBy) return null;
+
+  const cancelledByUser = cancelledBy === "USER";
+  const cancelledByLab = cancelledBy === "LAB" || cancelledBy === "LAB_OWNER";
+
+  const byLabel = cancelledByUser
+    ? "Cancelled by you"
+    : cancelledByLab
+      ? "Cancelled by lab"
+      : cancelledBy
+        ? `Cancelled by ${cancelledBy.toLowerCase().replace("_", " ")}`
+        : "Booking cancelled";
+
+  const CancelIcon = cancelledByUser
+    ? UserX
+    : cancelledByLab
+      ? ShieldAlert
+      : Ban;
+
+  return (
+    <div className="mx-5 mb-3 rounded-xl border border-red-100 bg-red-50/60 overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-red-100/70">
+        <div className="w-5 h-5 bg-red-100 rounded-md flex items-center justify-center flex-shrink-0">
+          <CancelIcon className="w-3 h-3 text-red-500" />
+        </div>
+        <p className="text-[11px] font-bold text-red-600 uppercase tracking-wide">
+          {byLabel}
+        </p>
+      </div>
+
+      {/* Reason */}
+      {cancellationReason && (
+        <div className="px-3.5 py-2.5">
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+            Reason
+          </p>
+          <p className="text-xs text-red-700/80 leading-relaxed">
+            {cancellationReason}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── ReportSection — lazy loads only when card is expanded ────────────────────
 
 function ReportSection({ bookingTests }) {
-  const [reportMap, setReportMap] = useState({}); // { [bookingTestId]: Report[] }
+  const [reportMap, setReportMap] = useState({});
   const [loadingIds, setLoadingIds] = useState(new Set());
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (loaded || !bookingTests?.length) return;
     setLoaded(true);
-
-    // Fetch all in parallel — one request per bookingTest
     bookingTests.forEach((bt) => {
       setLoadingIds((prev) => new Set([...prev, bt.id]));
       api
@@ -153,7 +200,6 @@ function ReportSection({ bookingTests }) {
               key={bt.id}
               className="flex flex-col sm:flex-row sm:items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100"
             >
-              {/* Test info */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-8 h-8 bg-white border border-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
                   <FlaskConical className="w-4 h-4 text-emerald-500" />
@@ -171,7 +217,6 @@ function ReportSection({ bookingTests }) {
                 </div>
               </div>
 
-              {/* Reports */}
               <div className="pl-11 sm:pl-0 flex-shrink-0">
                 {isLoading ? (
                   <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
@@ -228,6 +273,10 @@ function BookingCard({
     booking.bookingTests?.map((bt) => bt.name).filter(Boolean) ?? [];
 
   const hasReports = booking.status === "COMPLETED";
+  const isExpandable =
+    booking.status === "CONFIRMED" ||
+    booking.status === "COMPLETED" ||
+    booking.status === "CANCELLED";
   const isCancelable =
     booking.status === "PENDING" || booking.status === "CONFIRMED";
   const reviewLabel = hasReview ? "Edit review" : "Write review";
@@ -249,15 +298,13 @@ function BookingCard({
         <div className="flex-1 min-w-0">
           {/* ── Top row ── */}
           <div
-            className="flex items-center gap-3 px-5 pt-4 pb-3 cursor-pointer select-none"
-            onClick={() => setExpanded((v) => !v)}
+            className={`flex items-center gap-3 px-5 pt-4 pb-3 ${isExpandable ? "cursor-pointer select-none" : ""}`}
+            onClick={() => isExpandable && setExpanded((v) => !v)}
           >
-            {/* Lab icon */}
             <div className="w-10 h-10 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0">
               <Building2 className="w-5 h-5 text-emerald-600" />
             </div>
 
-            {/* Lab name + booking id */}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">
                 {booking.lab?.name || "Lab"}
@@ -272,7 +319,6 @@ function BookingCard({
               </p>
             </div>
 
-            {/* Status + total + chevron */}
             <div className="flex items-center gap-2.5 flex-shrink-0">
               <StatusPill status={booking.status} />
               {totalPrice > 0 && (
@@ -281,33 +327,30 @@ function BookingCard({
                   {totalPrice}
                 </div>
               )}
-              <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center">
-                {expanded ? (
-                  <ChevronUp className="w-3.5 h-3.5 text-gray-500" />
-                ) : (
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-                )}
-              </div>
+              {isExpandable && (
+                <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center">
+                  {expanded ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* ── Info strip — always visible ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-5 pb-4 border-b border-gray-50">
-            {/* Timeslot */}
             <InfoChip
               icon={Clock3}
               label="Slot"
               value={formatTime(booking.timeSlot) || "—"}
             />
-
-            {/* Tests count */}
             <InfoChip
               icon={TestTube2}
               label="Tests"
               value={`${booking.bookingTests?.length ?? 0} selected`}
             />
-
-            {/* Lab city */}
             {booking.lab?.city && (
               <InfoChip
                 icon={MapPin}
@@ -331,9 +374,9 @@ function BookingCard({
             </div>
           )}
 
-          {/* ── Expandable: Reports ── */}
+          {/* ── Expandable: Reports / Cancellation reason ── */}
           <AnimatePresence initial={false}>
-            {expanded && (
+            {isExpandable && expanded && (
               <motion.div
                 key="expanded"
                 initial={{ height: 0, opacity: 0 }}
@@ -342,9 +385,18 @@ function BookingCard({
                 transition={{ duration: 0.22, ease: "easeInOut" }}
                 style={{ overflow: "hidden" }}
               >
-                <div className="pt-4">
-                  <ReportSection bookingTests={booking.bookingTests} />
-                </div>
+                {booking.status === "CANCELLED" ? (
+                  <div className="pt-3">
+                    <CancellationNotice
+                      cancellationReason={booking.cancellationReason}
+                      cancelledBy={booking.cancelledBy}
+                    />
+                  </div>
+                ) : (
+                  <div className="pt-4">
+                    <ReportSection bookingTests={booking.bookingTests} />
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -352,7 +404,6 @@ function BookingCard({
           {/* ── Footer ── */}
           <div className="px-5 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* View lab link */}
               {booking.lab?.id && (
                 <Link
                   to={`/lab/${booking.lab.id}`}
@@ -365,7 +416,6 @@ function BookingCard({
                 </Link>
               )}
 
-              {/* Cancel button for pending/confirmed */}
               {isCancelable && (
                 <button
                   onClick={(e) => {
@@ -379,7 +429,6 @@ function BookingCard({
                 </button>
               )}
 
-              {/* Review button for completed bookings */}
               {booking.status === "COMPLETED" && (
                 <button
                   onClick={(e) => {
@@ -399,22 +448,27 @@ function BookingCard({
               )}
             </div>
 
-            {/* Expand toggle hint */}
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="ml-auto text-[11px] font-semibold text-gray-400 hover:text-emerald-600 transition-colors flex items-center gap-1"
-            >
-              {expanded ? (
-                <>
-                  Hide details <ChevronUp className="w-3 h-3" />
-                </>
-              ) : (
-                <>
-                  {hasReports ? "View reports" : "View tests"}
-                  <ChevronDown className="w-3 h-3" />
-                </>
-              )}
-            </button>
+            {isExpandable && (
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="ml-auto text-[11px] font-semibold text-gray-400 hover:text-emerald-600 transition-colors flex items-center gap-1"
+              >
+                {expanded ? (
+                  <>
+                    Hide details <ChevronUp className="w-3 h-3" />
+                  </>
+                ) : (
+                  <>
+                    {booking.status === "CANCELLED"
+                      ? "View reason"
+                      : hasReports
+                        ? "View reports"
+                        : "View tests"}
+                    <ChevronDown className="w-3 h-3" />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -484,15 +538,13 @@ export default function MyBookings() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Review modal state
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] =
     useState(null);
-  const [reviewCache, setReviewCache] = useState({}); // { [bookingId]: BookingReviewResponse | null }
+  const [reviewCache, setReviewCache] = useState({});
   const [reviewLoadingId, setReviewLoadingId] = useState(null);
   const [reviewFetchError, setReviewFetchError] = useState(null);
 
-  // Cancellation modal state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -514,7 +566,6 @@ export default function MyBookings() {
         );
       })
       .finally(() => setLoading(false));
-    console.log("Booking: ", bookings);
   };
 
   useEffect(() => {
@@ -535,7 +586,6 @@ export default function MyBookings() {
       setCancelError("Please provide a cancellation reason.");
       return;
     }
-
     setCancelSubmitting(true);
     setCancelError(null);
     try {
@@ -591,7 +641,6 @@ export default function MyBookings() {
     setSelectedBookingForReview(null);
   };
 
-  // Filter by tab + search
   const tabFiltered =
     activeTab === "ALL"
       ? bookings
@@ -600,12 +649,10 @@ export default function MyBookings() {
   const filtered = searchQuery.trim()
     ? tabFiltered.filter((b) => {
         const q = searchQuery.toLowerCase();
-
         const labName = b.lab?.name?.toLowerCase() || "";
         const testMatch = b.bookingTests?.some((bt) =>
           bt.name?.toLowerCase().includes(q),
         );
-
         return labName.includes(q) || testMatch;
       })
     : tabFiltered;
@@ -614,10 +661,8 @@ export default function MyBookings() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ── Page header — matches app nav style ── */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-5 pt-5 pb-0">
-          {/* Back link */}
           <Link
             to="/"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-emerald-600 transition-colors mb-5"
@@ -626,7 +671,6 @@ export default function MyBookings() {
             Back to map
           </Link>
 
-          {/* Title row */}
           <div className="flex items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-sm shadow-emerald-500/25">
@@ -648,8 +692,6 @@ export default function MyBookings() {
                 </p>
               </div>
             </div>
-
-            {/* Refresh */}
             <button
               onClick={fetchBookings}
               disabled={loading}
@@ -662,7 +704,6 @@ export default function MyBookings() {
             </button>
           </div>
 
-          {/* Status tabs */}
           {!loading && !error && (
             <div className="flex items-center gap-1.5 flex-wrap -mb-px">
               {STATUS_TABS.map((tab) => {
@@ -672,7 +713,6 @@ export default function MyBookings() {
                     : bookings.filter((b) => b.status === tab).length;
                 const active = activeTab === tab;
                 const dot = STATUS_CONFIG[tab]?.dot;
-
                 return (
                   <button
                     key={tab}
@@ -707,9 +747,7 @@ export default function MyBookings() {
         </div>
       </div>
 
-      {/* ── Content ── */}
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-4">
-        {/* Search bar — only when there are bookings */}
         {!loading && !error && bookings.length > 0 && (
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -723,7 +761,6 @@ export default function MyBookings() {
           </div>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center gap-3 py-20">
             <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-sm shadow-emerald-500/25">
@@ -735,7 +772,6 @@ export default function MyBookings() {
           </div>
         )}
 
-        {/* Error */}
         {!loading && error && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -755,12 +791,10 @@ export default function MyBookings() {
           </motion.div>
         )}
 
-        {/* Empty */}
         {!loading && !error && filtered.length === 0 && (
           <EmptyState activeTab={activeTab} />
         )}
 
-        {/* Cards */}
         {!loading &&
           !error &&
           filtered.map((booking, i) => (
@@ -776,7 +810,6 @@ export default function MyBookings() {
           ))}
       </div>
 
-      {/* Review Modal */}
       <AnimatePresence>
         {reviewModalOpen && selectedBookingForReview && (
           <ReviewModal
@@ -797,7 +830,6 @@ export default function MyBookings() {
         )}
       </AnimatePresence>
 
-      {/* Cancel Modal */}
       <AnimatePresence>
         {cancelModalOpen && bookingToCancel && (
           <CancelModal
@@ -851,13 +883,10 @@ function ReviewModal({
       setError("Please write a short review.");
       return;
     }
-
     setSubmitting(true);
     setError("");
-
     const payload = { rating, review: comment.trim() };
     const hasExisting = Boolean(initialReview);
-
     try {
       const res = hasExisting
         ? await api.put(`/booking/${booking.id}/review`, payload)
@@ -867,7 +896,7 @@ function ReviewModal({
       setError(
         err?.response?.data?.message ||
           err?.response?.data ||
-          "Failed to submit review. You may have already reviewed this booking.",
+          "Failed to submit review.",
       );
     } finally {
       setSubmitting(false);
@@ -876,7 +905,6 @@ function ReviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -884,8 +912,6 @@ function ReviewModal({
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
       />
-
-      {/* Dialog */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -893,7 +919,6 @@ function ReviewModal({
         className="relative w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden z-10"
       >
         <div className="h-1.5 bg-gradient-to-r from-amber-400 to-orange-500" />
-
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -920,7 +945,6 @@ function ReviewModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-
         <div className="p-6 space-y-6">
           {loadingExisting && (
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-4 py-3 rounded-xl font-semibold">
@@ -928,15 +952,12 @@ function ReviewModal({
               Loading your review…
             </div>
           )}
-
           {error && (
             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl font-semibold">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
-
-          {/* Star Selection */}
           <div className="flex flex-col items-center justify-center gap-3">
             <p className="text-sm font-bold text-gray-700">
               How was your experience?
@@ -952,11 +973,7 @@ function ReviewModal({
                   className="p-1 hover:scale-110 transition-transform focus:outline-none"
                 >
                   <Star
-                    className={`w-9 h-9 transition-colors ${
-                      star <= (hoverRating || rating)
-                        ? "text-amber-400 fill-amber-400"
-                        : "text-gray-200 fill-gray-100"
-                    }`}
+                    className={`w-9 h-9 transition-colors ${star <= (hoverRating || rating) ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-100"}`}
                   />
                 </button>
               ))}
@@ -967,8 +984,6 @@ function ReviewModal({
               </span>
             )}
           </div>
-
-          {/* Comment input */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Write a review
@@ -981,7 +996,6 @@ function ReviewModal({
             />
           </div>
         </div>
-
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
           <button
             onClick={onClose}
@@ -1011,6 +1025,8 @@ function ReviewModal({
   );
 }
 
+// ── CancelModal ───────────────────────────────────────────────────────────────
+
 function CancelModal({
   booking,
   reason,
@@ -1029,7 +1045,6 @@ function CancelModal({
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
       />
-
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1037,7 +1052,6 @@ function CancelModal({
         className="relative w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden z-10"
       >
         <div className="h-1.5 bg-gradient-to-r from-red-500 to-rose-500" />
-
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -1060,20 +1074,17 @@ function CancelModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-
         <div className="p-6 space-y-4">
           <p className="text-sm font-semibold text-gray-700">
             Please share a reason for cancelling. This helps labs keep slots
             available.
           </p>
-
           <textarea
             value={reason}
             onChange={(e) => onReasonChange(e.target.value)}
             placeholder="Reason for cancellation"
             className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm min-h-[120px] outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all resize-none"
           />
-
           {error && (
             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl font-semibold">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -1081,7 +1092,6 @@ function CancelModal({
             </div>
           )}
         </div>
-
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
           <button
             onClick={onClose}

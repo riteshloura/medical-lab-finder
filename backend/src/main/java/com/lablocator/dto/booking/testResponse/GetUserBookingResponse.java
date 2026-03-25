@@ -2,6 +2,7 @@ package com.lablocator.dto.booking.testResponse;
 
 import com.lablocator.dto.review.UserResponse;
 import com.lablocator.model.BookingStatus;
+import com.lablocator.model.CancelledBy;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -16,6 +17,7 @@ public record GetUserBookingResponse(
         LocalTime timeSlot,
         LocalDateTime bookingDate,
         String cancellationReason,
+        CancelledBy cancelledBy,
         LocalDateTime statusUpdatedAt
 ) {
 }

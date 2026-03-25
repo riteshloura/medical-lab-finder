@@ -1,5 +1,6 @@
 package com.lablocator.service;
 
+import com.lablocator.dto.booking.BookingStatusUpdateResult;
 import com.lablocator.dto.booking.CancelBookingByUserRequest;
 import com.lablocator.dto.booking.UpdateBookingStatusRequest;
 import com.lablocator.dto.booking.testResponse.BookingTestResponse;
@@ -15,11 +16,12 @@ import com.lablocator.repository.BookingRepo;
 import com.lablocator.repository.LabRepo;
 import com.lablocator.repository.LabTestRepo;
 import com.lablocator.repository.UserRepo;
+import com.lablocator.service.email.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +31,7 @@ import java.util.List;
 
 @Service
 public class BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
     @Autowired
     private BookingRepo bookingRepo;
     @Autowired
@@ -37,6 +40,8 @@ public class BookingService {
     private LabRepo labRepo;
     @Autowired
     private LabTestRepo labTestRepo;
+    @Autowired
+    private EmailService emailService;
 
 
     @Transactional
@@ -154,6 +159,7 @@ public class BookingService {
                     b.getTimeSlot(),
                     b.getCreatedAt(),
                     b.getCancellationReason(),
+                    b.getCancelledBy(),
                     b.getStatusUpdatedAt()
             ));
         }
@@ -201,6 +207,7 @@ public class BookingService {
                     b.getTimeSlot(),
                     b.getCreatedAt(),
                     b.getCancellationReason(),
+                    b.getCancelledBy(),
                     b.getStatusUpdatedAt()
             ));
         }
@@ -209,7 +216,7 @@ public class BookingService {
     }
 
     @Transactional
-    public Booking updateBookingStatus(Long bookingId, String email, UpdateBookingStatusRequest req) {
+    public BookingStatusUpdateResult updateBookingStatus(Long bookingId, String email, UpdateBookingStatusRequest req) {
 
         User labOwner = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -246,6 +253,7 @@ public class BookingService {
         }
 
         // ❗ Cancellation reason validation (for LAB_OWNER)
+        Lab lab = booking.getLab();
         if (newStatus == BookingStatus.CANCELLED) {
             if (req.cancellationReason() == null || req.cancellationReason().isBlank()) {
                 throw new BadRequestException("Cancellation reason is required");
@@ -254,7 +262,7 @@ public class BookingService {
             booking.setCancellationReason(req.cancellationReason());
             booking.setCancelledBy(CancelledBy.LAB_OWNER);
 
-            Lab lab = booking.getLab();
+//            Lab lab = booking.getLab();
             lab.setSlotCapacityOnline(
                     lab.getSlotCapacityOnline() + booking.getBookingTests().size()
             );
@@ -265,7 +273,97 @@ public class BookingService {
         booking.setStatus(newStatus);
         booking.setStatusUpdatedAt(LocalDateTime.now());
 
-        return bookingRepo.save(booking);
+        bookingRepo.save(booking);
+
+        String htmlContent = """
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            
+            <h2 style="color: #2c3e50;">🧪 LabLocator</h2>
+            <h3 style="color: #34495e;">Booking Status Update</h3>
+    
+            <p>Dear %s,</p>
+    
+            <p>
+                Your booking with <strong>%s</strong> has been 
+                <strong style="color: %s;">%s</strong>.
+            </p>
+    
+            <table style="border-collapse: collapse; margin-top: 15px;">
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Booking ID:</td>
+                    <td style="padding: 8px;">%d</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Lab Name:</td>
+                    <td style="padding: 8px;">%s</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Address:</td>
+                    <td style="padding: 8px;">%s</td>
+                </tr>
+            </table>
+        """;
+
+        if (newStatus == BookingStatus.CANCELLED) {
+            htmlContent += """
+        <p style="margin-top: 15px;">
+            <strong>Cancellation Reason:</strong> %s
+        </p>
+    """.formatted(booking.getCancellationReason());
+        }
+
+        htmlContent += """
+        <p style="margin-top: 20px;">
+            For any queries, please contact the lab directly.
+        </p>
+
+        <p>
+            Regards,<br/>
+            <strong>%s</strong><br/>
+            <span style="font-size: 12px; color: gray;">Powered by LabLocator</span>
+        </p>
+
+        <hr/>
+        <p style="font-size: 12px; color: gray;">
+            This is an automated notification regarding your booking.
+        </p>
+        </div>
+        """;
+
+        String statusColor = switch (newStatus) {
+            case CONFIRMED -> "green";
+            case CANCELLED -> "red";
+            case COMPLETED -> "blue";
+            default -> "black";
+        };
+
+        htmlContent = htmlContent.formatted(
+                booking.getUser().getName(),
+                lab.getName(),
+                statusColor,
+                newStatus,
+                booking.getId(),
+                lab.getName(),
+                lab.getAddress(),
+                lab.getName()
+        );
+
+        boolean emailSent = true;
+
+        try {
+            emailService.sendHtmlMail(
+                booking.getUser().getEmail(),
+                "Booking Update from " + lab.getName() + " | LabLocator",
+                htmlContent,
+                lab.getName()
+            );
+        } catch (Exception ex) {
+            // Do not block booking status update if email fails
+            emailSent = false;
+            log.warn("Email send failed for booking {} to {}: {}", booking.getId(), booking.getUser().getEmail(), ex.getMessage());
+        }
+
+        return new BookingStatusUpdateResult(booking, emailSent);
     }
 
     public List<Booking> getLabBookingByLabId(Long labId, String email) {

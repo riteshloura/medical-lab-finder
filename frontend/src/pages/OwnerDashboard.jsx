@@ -395,13 +395,19 @@ function OwnerDashboard() {
     setUpdatingBookingId(bookingId);
     setBookingMessage(null);
     try {
-      await api.put(`/booking/${bookingId}/status`, {
+      const res = await api.put(`/booking/${bookingId}/status`, {
         status: nextStatus,
         cancellationReason: reason.trim(),
       });
+
+      const emailSentHeader = res?.headers?.["x-email-sent"];
+      const emailFailed = emailSentHeader === "false";
+
       setBookingMessage({
-        type: "success",
-        text: `Booking marked as ${nextStatus.toLowerCase()}.`,
+        type: emailFailed ? "error" : "success",
+        text: emailFailed
+          ? "Booking updated, but email notification could not be sent."
+          : `Booking marked as ${nextStatus.toLowerCase()}.`,
       });
       await loadOwnerData();
       // Close cancel input after success
