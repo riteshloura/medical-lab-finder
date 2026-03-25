@@ -7,6 +7,7 @@ import com.lablocator.exceptions.AccessDeniedException;
 import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.Lab;
 import com.lablocator.model.User;
+import com.lablocator.projection.NearbyLabProjection;
 import com.lablocator.repository.LabRepo;
 import com.lablocator.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,14 +23,15 @@ public class LabService {
     @Autowired private UserRepo userRepo;
 
     public List<GetNearbyLabsResponse> getNearbyLabs(double lat, double lng, double radius) {
-        List<Lab> labs = labRepo.findNearbyLabs(lat, lng, radius);
+        List<NearbyLabProjection> labs = labRepo.findNearbyLabs(lat, lng, radius);
         List<GetNearbyLabsResponse> res = new ArrayList<>();
-        for (Lab lab : labs) {
+        for (NearbyLabProjection lab : labs) {
             res.add(new GetNearbyLabsResponse(
                     lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getContactNumber(),
                     lab.getId(), lab.getLatitude(), lab.getLongitude(),
-                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime()
+                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                    Math.round(lab.getDistance() * 100.0) / 100.0
             ));
         }
         return res;
