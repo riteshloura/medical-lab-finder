@@ -41,4 +41,14 @@ public class authController {
     public ResponseEntity<ApiMessage> resendVerification(@Valid @RequestBody ResendVerificationRequest req) {
         return ResponseEntity.ok(new ApiMessage(authService.resendVerification(req.email())));
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiMessage> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        return ResponseEntity.ok(new ApiMessage(authService.forgotPassword(req.email())));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiMessage> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        return ResponseEntity.ok(new ApiMessage(authService.resetPassword(req.token(), req.newPassword())));
+    }
 }

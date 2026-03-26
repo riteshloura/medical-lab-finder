@@ -145,6 +145,72 @@ public class AuthService {
         return "Verification email sent. Please check your inbox.";
     }
 
+    public String forgotPassword(String email) {
+        // We find the user but always return the same message to prevent email enumeration
+        userRepo.findByEmail(email).ifPresent(user -> {
+            String token = jwtService.generatePasswordResetToken(email);
+            String link = frontendUrl + "/reset-password?token=" + token;
+
+            String html = """
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; background: #f9f9f9; border-radius: 8px;">
+                        <h2 style="color: #059669;">Reset Your Password — LabLocator</h2>
+                        <p>Hi %s,</p>
+                        <p>We received a request to reset your LabLocator account password. Click the button below to choose a new password.</p>
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="%s"
+                               style="display: inline-block; padding: 14px 28px; background: linear-gradient(to right, #059669, #0d9488); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                               Reset Password
+                            </a>
+                        </div>
+                        <p style="color: #6b7280; font-size: 14px;">This link expires in <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                        <p style="color: #9ca3af; font-size: 12px;">LabLocator — Find Affordable Healthcare Near You</p>
+                    </div>
+                    """.formatted(user.getName(), link);
+
+            try {
+                emailService.sendHtmlMail(email, "Reset Your Password - LabLocator", html, "LabLocator");
+            } catch (EmailSendException ex) {
+                log.warn("Failed to send password reset email to {}: {}", email, ex.getMessage());
+                // Don't rethrow — keep the response vague
+            }
+        });
+
+        return "If an account with that email exists, a password reset link has been sent.";
+    }
+
+    public String resetPassword(String token, String newPassword) {
+        String email;
+        Claims claims;
+
+        try {
+            claims = jwtService.extractAllClaims(token);
+            email = claims.getSubject();
+
+            if (!"PASSWORD_RESET".equals(claims.get("type"))) {
+                throw new BadRequestException("Invalid token type");
+            }
+        } catch (ExpiredJwtException e) {
+            throw new BadRequestException("Reset link has expired. Please request a new one.");
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid or malformed reset token.");
+        }
+
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        // Ensure account is marked verified when resetting password (implies ownership of email)
+        if (!Boolean.TRUE.equals(user.getIsVerified())) {
+            user.setIsVerified(true);
+        }
+        userRepo.save(user);
+
+        return "Password reset successfully! You can now log in with your new password.";
+    }
+
     public String verifyEmail(String token) {
         String email;
         Claims claims;

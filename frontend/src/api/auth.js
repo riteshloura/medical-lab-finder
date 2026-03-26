@@ -31,6 +31,18 @@ export const resendVerificationEmail = async (email) => {
   return response.data;
 };
 
+// Request a password reset email
+export const forgotPassword = async (email) => {
+  const response = await api.post("/auth/forgot-password", { email });
+  return response.data;
+};
+
+// Submit a new password with the reset token
+export const resetPassword = async (token, newPassword) => {
+  const response = await api.post("/auth/reset-password", { token, newPassword });
+  return response.data;
+};
+
 // Get current user from localStorage
 export const getCurrentUser = () => {
   const user = localStorage.getItem("user");
