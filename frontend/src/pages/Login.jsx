@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button, Divider } from "@heroui/react";
 import { motion } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, TestTube, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, TestTube, ArrowRight, Loader2, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { resendVerificationEmail } from "../api/auth";
 
 function Login() {
   const [isVisible, setIsVisible] = useState(false);
@@ -12,6 +13,9 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [resendStatus, setResendStatus] = useState("idle"); // idle | sending | sent | error
+  const [resendMessage, setResendMessage] = useState("");
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -21,15 +25,14 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsUnverified(false);
+    setResendStatus("idle");
+    setResendMessage("");
 
     if (!email || !password) {
       setErrorMessage("Please fill in all fields");
       return;
     }
-
-    // const response = await api.get("/labs");
-    // const data = await response.data;
-    // console.log(data);
 
     setIsSubmitting(true);
 
@@ -38,11 +41,33 @@ function Login() {
     if (result.success) {
       navigate(result.user?.role === "LAB_OWNER" ? "/owner/dashboard" : "/");
     } else {
-      setErrorMessage(result.error);
+      const msg = result.error || "";
+      if (msg.toLowerCase().includes("verify your email")) {
+        setIsUnverified(true);
+      } else {
+        setErrorMessage(msg);
+      }
       console.error("Error in login: ", result);
     }
 
     setIsSubmitting(false);
+  };
+
+  const handleResend = async () => {
+    setResendStatus("sending");
+    setResendMessage("");
+    try {
+      const res = await resendVerificationEmail(email);
+      setResendStatus("sent");
+      setResendMessage(res?.message || "Verification email sent! Check your inbox.");
+    } catch (err) {
+      setResendStatus("error");
+      setResendMessage(
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        "Failed to send email. Please try again."
+      );
+    }
   };
 
   //   const getLabs = async(e) => {
@@ -131,6 +156,44 @@ function Login() {
               </div>
             )}
 
+            {/* Unverified email banner */}
+            {isUnverified && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-start gap-2 text-amber-700">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Email not verified</p>
+                    <p className="text-sm mt-0.5">
+                      Please check <strong>{email}</strong> for a verification link.
+                    </p>
+                    {resendStatus === "sent" && (
+                      <div className="flex items-center gap-1 mt-2 text-emerald-700">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm">{resendMessage}</span>
+                      </div>
+                    )}
+                    {resendStatus === "error" && (
+                      <p className="text-sm mt-2 text-red-600">{resendMessage}</p>
+                    )}
+                    {resendStatus !== "sent" && (
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resendStatus === "sending"}
+                        className="mt-2 flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2 disabled:opacity-50"
+                      >
+                        {resendStatus === "sending" ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                        ) : (
+                          <><RefreshCw className="w-4 h-4" /> Resend verification email</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Email Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -144,7 +207,7 @@ function Login() {
                   type="email"
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { console.log(isUnverified); setIsUnverified(false); return setEmail(e.target.value) }}
                   className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-gray-900 placeholder-gray-400"
                 />
               </div>

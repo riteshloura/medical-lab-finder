@@ -8,7 +8,38 @@ export const loginUser = async (email, password) => {
 
 // Register user
 export const registerUser = async (name, email, password, role) => {
-  const response = await api.post("/auth/register", { name, email, password, role });
+  const response = await api.post("/auth/register", {
+    name,
+    email,
+    password,
+    role,
+  });
+  return response.data;
+};
+
+// Verify email token
+export const verifyEmailToken = async (token) => {
+  const response = await api.get(
+    `/auth/verify?token=${encodeURIComponent(token)}`,
+  );
+  return response.data;
+};
+
+// Resend verification email
+export const resendVerificationEmail = async (email) => {
+  const response = await api.post("/auth/resend-verification", { email });
+  return response.data;
+};
+
+// Request a password reset email
+export const forgotPassword = async (email) => {
+  const response = await api.post("/auth/forgot-password", { email });
+  return response.data;
+};
+
+// Submit a new password with the reset token
+export const resetPassword = async (token, newPassword) => {
+  const response = await api.post("/auth/reset-password", { token, newPassword });
   return response.data;
 };
 

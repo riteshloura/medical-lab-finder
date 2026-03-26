@@ -7,6 +7,9 @@ import LabDetails from "./pages/LabDetails";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import MyBookings from "./pages/MyBookings";
 import OwnerRoute from "./components/OwnerRoute";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -16,6 +19,9 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/lab/:labId" element={<LabDetails />} />
           <Route path="/my-bookings" element={<MyBookings />} />
           <Route

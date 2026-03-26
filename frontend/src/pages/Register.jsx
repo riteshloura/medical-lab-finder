@@ -66,7 +66,9 @@ function Register() {
     }
 
     if (!formData.agreeToTerms) {
-      setErrorMessage("Please agree to the Terms of Service and Privacy Policy");
+      setErrorMessage(
+        "Please agree to the Terms of Service and Privacy Policy",
+      );
       return;
     }
 
@@ -75,13 +77,19 @@ function Register() {
     // Map userType to role
     const role = formData.userType === "lab" ? "LAB_OWNER" : "USER";
 
-    const result = await register(formData.fullName, formData.email, formData.password, role);
+    const result = await register(
+      formData.fullName,
+      formData.email,
+      formData.password,
+      role,
+    );
 
     if (result.success) {
-      setSuccessMessage("Account created successfully! Redirecting to login...");
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
+      const base = result.message || "Account created successfully.";
+      const suffix = result.emailSent
+        ? ` Please check ${formData.email} for a verification link.`
+        : " We could not send the verification email right now. Please try again later.";
+      setSuccessMessage(base + suffix);
     } else {
       setErrorMessage(result.error);
     }
@@ -144,12 +152,16 @@ function Register() {
               >
                 <User
                   className={`w-6 h-6 mx-auto mb-2 ${
-                    formData.userType === "patient" ? "text-emerald-600" : "text-gray-400"
+                    formData.userType === "patient"
+                      ? "text-emerald-600"
+                      : "text-gray-400"
                   }`}
                 />
                 <span
                   className={`text-sm font-medium ${
-                    formData.userType === "patient" ? "text-emerald-600" : "text-gray-600"
+                    formData.userType === "patient"
+                      ? "text-emerald-600"
+                      : "text-gray-600"
                   }`}
                 >
                   Patient
@@ -166,12 +178,16 @@ function Register() {
               >
                 <Building2
                   className={`w-6 h-6 mx-auto mb-2 ${
-                    formData.userType === "lab" ? "text-emerald-600" : "text-gray-400"
+                    formData.userType === "lab"
+                      ? "text-emerald-600"
+                      : "text-gray-400"
                   }`}
                 />
                 <span
                   className={`text-sm font-medium ${
-                    formData.userType === "lab" ? "text-emerald-600" : "text-gray-600"
+                    formData.userType === "lab"
+                      ? "text-emerald-600"
+                      : "text-gray-600"
                   }`}
                 >
                   Lab Owner
@@ -279,7 +295,9 @@ function Register() {
                   type={isConfirmVisible ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
-                  onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("confirmPassword", e.target.value)
+                  }
                   className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-gray-900 placeholder-gray-400"
                 />
                 <button
@@ -339,7 +357,9 @@ function Register() {
 
           <div className="mt-6">
             <Divider className="my-4" />
-            <p className="text-center text-gray-600 text-sm">Or continue with</p>
+            <p className="text-center text-gray-600 text-sm">
+              Or continue with
+            </p>
 
             <div className="mt-4 grid grid-cols-2 gap-4">
               <Button
@@ -417,7 +437,8 @@ function Register() {
             </div>
             <h1 className="text-4xl font-bold mb-4">Join LabLocator</h1>
             <p className="text-emerald-100 text-lg max-w-md">
-              Start your journey to affordable healthcare. Find labs, compare prices, and book appointments easily.
+              Start your journey to affordable healthcare. Find labs, compare
+              prices, and book appointments easily.
             </p>
           </motion.div>
 

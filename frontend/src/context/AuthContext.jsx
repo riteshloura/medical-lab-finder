@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, registerUser, saveAuthData, clearAuthData, getCurrentUser, isAuthenticated } from "../api/auth";
+import {
+  loginUser,
+  registerUser,
+  saveAuthData,
+  clearAuthData,
+  getCurrentUser,
+  isAuthenticated,
+} from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -23,21 +30,24 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       const response = await loginUser(email, password);
-      
+
       const userData = {
         name: response.name,
         userId: response.userId,
         email: response.email,
         role: response.role,
       };
-      
+
       saveAuthData(response.token, userData);
       setUser(userData);
       setLoading(false);
       return { success: true, user: userData };
     } catch (err) {
       setLoading(false);
-      const errorMessage = err.response?.data?.message || err.response?.data || "Login failed. Please try again.";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data ||
+        "Login failed. Please try again.";
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -50,10 +60,17 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const response = await registerUser(name, email, password, role);
       setLoading(false);
-      return { success: true, message: response };
+      return {
+        success: true,
+        message: response?.message || "Registration successful.",
+        emailSent: response?.emailSent ?? false,
+      };
     } catch (err) {
       setLoading(false);
-      const errorMessage = err.response?.data?.message || err.response?.data || "Registration failed. Please try again.";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data ||
+        "Registration failed. Please try again.";
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }

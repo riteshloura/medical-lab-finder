@@ -41,7 +41,7 @@ public class JwtService {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 
-    private Claims extractAllClaims(String token){
+    public Claims extractAllClaims(String token){
         return Jwts.parserBuilder()
                 .setSigningKey(getSignKey())
                 .build()
@@ -52,5 +52,25 @@ public class JwtService {
     private Key getSignKey(){
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String generateEmailVerificationToken(String email) {
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("type", "EMAIL_VERIFICATION")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24h
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generatePasswordResetToken(String email) {
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("type", "PASSWORD_RESET")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hour
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 }
