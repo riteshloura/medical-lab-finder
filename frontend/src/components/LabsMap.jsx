@@ -1,7 +1,17 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import { Icon } from "leaflet";
 import { useEffect } from "react";
-import { Building2, MapPin, Phone, Navigation, Clock, Shield, ChevronRight, ExternalLink } from "lucide-react";
+import {
+  Building2,
+  MapPin,
+  Phone,
+  Navigation,
+  Clock,
+  Shield,
+  ChevronRight,
+  ExternalLink,
+  Star,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 
@@ -81,146 +91,231 @@ function RecenterMap({ center }) {
 
 function LabPopupContent({ lab }) {
   return (
-    <div style={{
-      width: "280px",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      display: "block",
-      overflow: "hidden",
-    }}>
-
+    <div
+      style={{
+        width: "280px",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        display: "block",
+        overflow: "hidden",
+      }}
+    >
       {/* ── Header band ── */}
-      <div style={{
-        background: "linear-gradient(135deg, #0d9488 0%, #059669 100%)",
-        padding: "16px",
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: "12px",
-        boxSizing: "border-box",
-        width: "100%",
-      }}>
-        {/* Lab icon */}
-        <div style={{
-          width: "42px",
-          height: "42px",
-          minWidth: "42px",
-          background: "rgba(255,255,255,0.18)",
-          borderRadius: "11px",
+      <div
+        style={{
+          background: "linear-gradient(135deg, #0d9488 0%, #059669 100%)",
+          padding: "16px",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "1.5px solid rgba(255,255,255,0.3)",
-        }}>
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: "12px",
+          boxSizing: "border-box",
+          width: "100%",
+        }}
+      >
+        {/* Lab icon */}
+        <div
+          style={{
+            width: "42px",
+            height: "42px",
+            minWidth: "42px",
+            background: "rgba(255,255,255,0.18)",
+            borderRadius: "11px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "1.5px solid rgba(255,255,255,0.3)",
+          }}
+        >
           <Building2 size={20} color="white" strokeWidth={2} />
         </div>
 
         {/* Name + location */}
         <div style={{ flex: "1 1 0", minWidth: 0, overflow: "hidden" }}>
-          <p style={{
-            margin: 0,
-            padding: 0,
-            fontWeight: 700,
-            fontSize: "14px",
-            color: "white",
-            lineHeight: "1.35",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}>
+          <p
+            style={{
+              margin: 0,
+              padding: 0,
+              fontWeight: 700,
+              fontSize: "14px",
+              color: "white",
+              lineHeight: "1.35",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {lab.name}
           </p>
-          <p style={{
-            margin: "4px 0 0",
-            padding: 0,
-            fontSize: "11px",
-            color: "rgba(255,255,255,0.72)",
-            lineHeight: "1",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}>
-            {lab.city}{lab.state ? `, ${lab.state}` : ""}
+          <p
+            style={{
+              margin: "4px 0 0",
+              padding: 0,
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.72)",
+              lineHeight: "1",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {lab.city}
+            {lab.state ? `, ${lab.state}` : ""}
           </p>
         </div>
 
-        {/* Verified pill */}
-        <div style={{
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          gap: "4px",
-          background: "rgba(255,255,255,0.18)",
-          border: "1px solid rgba(255,255,255,0.35)",
-          borderRadius: "20px",
-          padding: "4px 9px",
-        }}>
-          <Shield size={10} color="white" strokeWidth={2.5} />
-          <span style={{
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "white",
-            letterSpacing: "0.4px",
-            lineHeight: 1,
-          }}>
-            Verified
-          </span>
+        {/* Status and Rating pills */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "4px",
+          }}
+        >
+          {isLabOpen(lab.openingTime, lab.closingTime) ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                background: "rgba(255,255,255,0.18)",
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: "20px",
+                padding: "3px 8px",
+              }}
+            >
+              <Clock size={10} color="white" strokeWidth={2.5} />
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "white",
+                  letterSpacing: "0.4px",
+                  lineHeight: 1,
+                }}
+              >
+                Open
+              </span>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                background: "rgba(220,38,38,0.8)",
+                border: "1px solid rgba(255,160,160,0.4)",
+                borderRadius: "20px",
+                padding: "3px 8px",
+              }}
+            >
+              <Clock size={10} color="white" strokeWidth={2.5} />
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "white",
+                  letterSpacing: "0.4px",
+                  lineHeight: 1,
+                }}
+              >
+                Closed
+              </span>
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "2px",
+              background: "rgba(255,255,255,0.9)",
+              borderRadius: "6px",
+              padding: "2px 6px",
+            }}
+          >
+            <Star size={10} color="#f59e0b" fill="#f59e0b" />
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#374151",
+                lineHeight: 1,
+              }}
+            >
+              {lab.avgRating ? lab.avgRating.toFixed(1) : "New"}
+            </span>
+            {lab.totalReviews > 0 && (
+              <span style={{ fontSize: "10px", color: "#6b7280" }}>
+                ({lab.totalReviews})
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ── Body ── */}
-      <div style={{
-        background: "white",
-        padding: "14px 16px 16px",
-        boxSizing: "border-box",
-        width: "100%",
-      }}>
-
+      <div
+        style={{
+          background: "white",
+          padding: "14px 16px 16px",
+          boxSizing: "border-box",
+          width: "100%",
+        }}
+      >
         {/* Address */}
-        <div style={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "flex-start",
-          gap: "8px",
-          marginBottom: "9px",
-        }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: "8px",
+            marginBottom: "9px",
+          }}
+        >
           <div style={{ flexShrink: 0, marginTop: "2px" }}>
             <MapPin size={13} color="#9ca3af" strokeWidth={2} />
           </div>
-          <p style={{
-            margin: 0,
-            padding: 0,
-            fontSize: "12px",
-            color: "#4b5563",
-            lineHeight: "1.55",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}>
+          <p
+            style={{
+              margin: 0,
+              padding: 0,
+              fontSize: "12px",
+              color: "#4b5563",
+              lineHeight: "1.55",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {lab.address}
           </p>
         </div>
 
         {/* Phone */}
         {lab.contactNumber && (
-          <div style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "9px",
-          }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "9px",
+            }}
+          >
             <div style={{ flexShrink: 0 }}>
               <Phone size={13} color="#9ca3af" strokeWidth={2} />
             </div>
-            <p style={{
-              margin: 0,
-              padding: 0,
-              fontSize: "12px",
-              color: "#4b5563",
-              lineHeight: 1,
-            }}>
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontSize: "12px",
+                color: "#4b5563",
+                lineHeight: 1,
+              }}
+            >
               {lab.contactNumber}
             </p>
           </div>
@@ -228,48 +323,63 @@ function LabPopupContent({ lab }) {
 
         {/* Slots available */}
         {lab.slotCapacityOnline > 0 && (
-          <div style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "13px",
-          }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "13px",
+            }}
+          >
             <div style={{ flexShrink: 0 }}>
               <Clock size={13} color="#10b981" strokeWidth={2} />
             </div>
-            <p style={{
-              margin: 0,
-              padding: 0,
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "#059669",
-              lineHeight: 1,
-            }}>
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#059669",
+                lineHeight: 1,
+              }}
+            >
               {lab.slotCapacityOnline} slots available
             </p>
             {/* Live dot */}
-            <div style={{
-              width: "6px",
-              height: "6px",
-              borderRadius: "50%",
-              background: "#10b981",
-              animation: "pulse 2s infinite",
-              flexShrink: 0,
-            }} />
+            <div
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                background: "#10b981",
+                animation: "pulse 2s infinite",
+                flexShrink: 0,
+              }}
+            />
           </div>
         )}
 
         {/* Divider */}
-        <div style={{
-          height: "1px",
-          background: "#f3f4f6",
-          marginBottom: "13px",
-        }} />
+        <div
+          style={{
+            height: "1px",
+            background: "#f3f4f6",
+            marginBottom: "13px",
+          }}
+        />
 
         {/* CTA buttons row */}
-        <div style={{ display: "flex", flexDirection: "row", gap: "8px", boxSizing: "border-box", width: "100%" }}>
-
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            gap: "8px",
+            boxSizing: "border-box",
+            width: "100%",
+          }}
+        >
           {/* Get Directions */}
           <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${lab.latitude},${lab.longitude}`}
@@ -314,7 +424,10 @@ function LabPopupContent({ lab }) {
           </a>
 
           {/* View Lab Details */}
-          <Link to={`/lab/${lab.id}`} style={{ textDecoration: "none", flex: 1 }}>
+          <Link
+            to={`/lab/${lab.id}`}
+            style={{ textDecoration: "none", flex: 1 }}
+          >
             <div
               style={{
                 display: "flex",
@@ -334,8 +447,12 @@ function LabPopupContent({ lab }) {
                 boxSizing: "border-box",
                 width: "100%",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#0d9488"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#111827"; }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#0d9488";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#111827";
+              }}
             >
               View Details
               <ChevronRight size={13} strokeWidth={2.5} />
@@ -349,9 +466,35 @@ function LabPopupContent({ lab }) {
 
 // ── Main map component ─────────────────────────────────────────────────────────
 
+const isLabOpen = (openingTime, closingTime) => {
+  if (!openingTime || !closingTime) return false;
+  try {
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    const parseTime = (t) => {
+      if (Array.isArray(t)) return t[0] * 60 + (t[1] || 0);
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const openMins = parseTime(openingTime);
+    const closeMins = parseTime(closingTime);
+
+    if (closeMins < openMins) {
+      return currentMins >= openMins || currentMins <= closeMins;
+    }
+    return currentMins >= openMins && currentMins <= closeMins;
+  } catch (e) {
+    return false;
+  }
+};
+
 function LabsMap({ userLocation, labs, selectedLab, className = "" }) {
   const defaultCenter = [20.5937, 78.9629];
-  const center = userLocation ? [userLocation.lat, userLocation.lng] : defaultCenter;
+  const center = userLocation
+    ? [userLocation.lat, userLocation.lng]
+    : defaultCenter;
   const zoom = userLocation ? 13 : 5;
 
   return (
@@ -376,16 +519,29 @@ function LabsMap({ userLocation, labs, selectedLab, className = "" }) {
             selectedLab?.latitude && selectedLab?.longitude
               ? [selectedLab.latitude, selectedLab.longitude]
               : userLocation
-              ? [userLocation.lat, userLocation.lng]
-              : null
+                ? [userLocation.lat, userLocation.lng]
+                : null
           }
         />
 
         {/* User location marker */}
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
+          <Marker
+            position={[userLocation.lat, userLocation.lng]}
+            icon={userIcon}
+          >
             <Popup className="user-popup" closeButton={false}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", color: "#065f46", fontWeight: 600, fontSize: "13px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 14px",
+                  color: "#065f46",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                }}
+              >
                 <Navigation size={15} color="#10b981" />
                 You are here
               </div>
@@ -407,7 +563,7 @@ function LabsMap({ userLocation, labs, selectedLab, className = "" }) {
                   <LabPopupContent lab={lab} />
                 </Popup>
               </Marker>
-            )
+            ),
         )}
       </MapContainer>
     </div>

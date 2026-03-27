@@ -15,6 +15,8 @@ public record GetNearbyLabsResponse(
         Integer slotCapacityOnline,
         LocalTime openingTime,
         LocalTime closingTime,
+        Integer totalReviews,
+        Double avgRating,
         Double distance
 ) {
 }

@@ -8,11 +8,9 @@ import {
   Navigation,
   Shield,
   X,
-  List,
   Layers,
   ChevronRight,
   Clock,
-  TestTube2,
   SlidersHorizontal,
   CalendarDays,
   IndianRupee,
@@ -20,12 +18,12 @@ import {
   Loader2,
   Download,
   ExternalLink,
-  User,
+  Star,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import api from "../api/axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import LabsMap from "../components/LabsMap";
 import { useAuth } from "../context/AuthContext";
 
@@ -62,10 +60,33 @@ const BOOKING_STATUS_CONFIG = {
   },
 };
 
+const isLabOpen = (openingTime, closingTime) => {
+  if (!openingTime || !closingTime) return false;
+  try {
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    const parseTime = (t) => {
+      if (Array.isArray(t)) return t[0] * 60 + (t[1] || 0);
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const openMins = parseTime(openingTime);
+    const closeMins = parseTime(closingTime);
+
+    if (closeMins < openMins) {
+      return currentMins >= openMins || currentMins <= closeMins;
+    }
+    return currentMins >= openMins && currentMins <= closeMins;
+  } catch (e) {
+    return false;
+  }
+};
+
 function Home() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  // console.log("user: ", user)
 
   const [nearbyLabs, setNearbyLabs] = useState([]);
   const [isLoadingLabs, setIsLoadingLabs] = useState(true);
@@ -75,8 +96,10 @@ function Home() {
   const [searchLocation, setSearchLocation] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(true); // desktop: open; collapses to icon on click
   const [selectedLab, setSelectedLab] = useState(null);
   const [activeFilter, setActiveFilter] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   // sidebar tab: "labs" | "bookings"
   const [sidebarTab, setSidebarTab] = useState("labs");
@@ -86,16 +109,34 @@ function Home() {
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
 
+  // ── Detect mobile (< 768px) ──────────────────────────────────────────────
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsSearchOpen(false);
+        setIsSidebarOpen(false);
+      } else {
+        setIsSearchOpen(true);
+        setIsSidebarOpen(true);
+      }
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // ── Lab fetching ─────────────────────────────────────────────────────────
   const getNearbyLabs = async (lat, lng) => {
     try {
       setIsLoadingLabs(true);
       const response = await api.get(
-        `/labs/nearby?lat=${lat}&lng=${lng}&radius=1000`,
+        `/labs/nearby?lat=${lat}&lng=${lng}&radius=50`,
       );
       setNearbyLabs(response.data);
-      console.log("Nearby labs: ", response.data);
-    } catch (error) {
-      console.error("Error fetching nearby labs:", error);
+      console.log("Nearby Labs:", response.data);
+    } catch {
       setLocationError("Failed to fetch nearby labs");
     } finally {
       setIsLoadingLabs(false);
@@ -109,14 +150,14 @@ function Home() {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
         setUserLocation({ lat, lng });
         getNearbyLabs(lat, lng);
       },
-      (error) => {
-        console.error(error);
+      (err) => {
+        console.error(err);
         setLocationError("Please enable location access to find nearby labs");
         setIsLoadingLabs(false);
       },
@@ -132,8 +173,10 @@ function Home() {
         `/labs/search?test=${searchTest}&&location=${searchLocation}`,
       );
       setNearbyLabs(response.data);
-    } catch (error) {
-      console.error("Error searching labs:", error);
+      console.log("Search Results:", response.data);
+      // On mobile, close search after searching to reveal map
+      if (isMobile) setIsSearchOpen(false);
+    } catch {
       setLocationError("Failed to search labs. Please try again.");
     } finally {
       setIsSearching(false);
@@ -147,20 +190,16 @@ function Home() {
 
   const fetchRecentBookings = async () => {
     if (!isAuthenticated) return;
-
     if (user.role === "LAB_OWNER") {
       navigate("/owner/dashboard");
       return;
     }
-
     try {
       setIsLoadingBookings(true);
       setBookingsError("");
       const res = await api.get("/booking/me");
-      // Most recent 6 only
       setRecentBookings(res.data.slice(0, 6));
-      console.log(res);
-    } catch (err) {
+    } catch {
       setBookingsError("Failed to load bookings.");
     } finally {
       setIsLoadingBookings(false);
@@ -172,27 +211,40 @@ function Home() {
       navigate("/login");
       return;
     }
-
     if (user.role === "LAB_OWNER") {
       navigate("/owner/dashboard");
       return;
     }
     setSidebarTab("bookings");
     setIsSidebarOpen(true);
-    // Only fetch if we haven't yet
-    if (recentBookings.length === 0 && !isLoadingBookings) {
+    // On mobile, close search when opening sidebar
+    if (isMobile) setIsSearchOpen(false);
+    if (recentBookings.length === 0 && !isLoadingBookings)
       fetchRecentBookings();
-    }
   };
 
   const handleLabsTab = () => {
     setSidebarTab("labs");
     setIsSidebarOpen(true);
+    if (isMobile) setIsSearchOpen(false);
+  };
+
+  const handleSearchToggle = () => {
+    const next = !isSearchOpen;
+    setIsSearchOpen(next);
+    // On mobile, close sidebar when opening search
+    if (isMobile && next) setIsSidebarOpen(false);
   };
 
   useEffect(() => {
     getUserLocation();
   }, []);
+
+  // ── Sidebar width: narrower on small screens ─────────────────────────────
+  const sidebarWidth = isMobile ? "calc(100vw - 24px)" : "380px";
+  const sidebarRight = isMobile ? "12px" : "20px";
+  const sidebarTop = isMobile ? "76px" : "88px";
+  const sidebarHeight = isMobile ? "calc(100% - 92px)" : "calc(100% - 104px)";
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-100">
@@ -209,199 +261,277 @@ function Home() {
           />
         </div>
 
-        {/* ── Search Panel (Top-Left) ── */}
+        {/* ── Search Toggle Button (always visible top-left) ── */}
         <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut", delay: 0.15 }}
-          className="absolute top-20 left-5 z-30 w-[360px]"
-        >
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            {/* Search inputs */}
-            <div className="p-3 space-y-2">
-              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
-                <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <input
-                  className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
-                  placeholder="Search tests, e.g. CBC, Thyroid…"
-                  value={searchTest}
-                  onChange={(e) => setSearchTest(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                />
-                {searchTest && (
-                  <button onClick={() => setSearchTest("")}>
-                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
-                <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <input
-                  className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
-                  placeholder="Area, city or pincode…"
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                />
-                {searchLocation && (
-                  <button onClick={() => setSearchLocation("")}>
-                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-                  </button>
-                )}
-              </div>
-
-              <button
-                onClick={handleSearch}
-                disabled={isSearching || (!searchTest && !searchLocation)}
-                className="w-full h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm shadow-emerald-500/30"
-              >
-                {isSearching ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Searching…
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4" />
-                    Search Labs
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Divider + Quick tags */}
-            <div className="px-3 pb-3">
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                  Popular
-                </span>
-                <div className="flex-1 h-px bg-gray-100" />
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK_FILTERS.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => handleQuickFilter(tag)}
-                    className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${
-                      activeFilter === tag
-                        ? "bg-emerald-500 border-emerald-500 text-white"
-                        : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── Sidebar Tab Pills (Top-Right, below navbar) ── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="absolute top-20 right-5 z-30 flex items-center gap-1 bg-white rounded-xl shadow-lg border border-gray-100 p-1"
-        >
-          {/* Labs tab */}
-          <button
-            onClick={handleLabsTab}
-            className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all ${
-              isSidebarOpen && sidebarTab === "labs"
-                ? "bg-emerald-500 text-white shadow-sm"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            {nearbyLabs.length} Labs
-          </button>
-
-          {/* Divider */}
-          <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
-
-          {/* Bookings tab */}
-          <button
-            onClick={handleBookingsTab}
-            className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all relative ${
-              isSidebarOpen && sidebarTab === "bookings"
-                ? "bg-emerald-500 text-white shadow-sm"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5" />
-            {isAuthenticated
-              ? isLoadingBookings
-                ? "…"
-                : `${recentBookings.length === 0 ? "" : recentBookings.length} Bookings`
-              : "Bookings"}
-            {/* Pending badge — only when tab is inactive */}
-            {isAuthenticated &&
-              !(isSidebarOpen && sidebarTab === "bookings") &&
-              recentBookings.filter((b) => b.status === "PENDING").length >
-                0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
-                  {recentBookings.filter((b) => b.status === "PENDING").length}
-                </span>
-              )}
-          </button>
-
-          {/* Close — only when sidebar is open */}
-          {isSidebarOpen && (
-            <>
-              <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
-        </motion.div>
-
-        {/* ── Stats Pill (Bottom-Left) ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="absolute bottom-6 left-5 z-30"
-        >
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-2.5 flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900 leading-none">
-                {nearbyLabs.length}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Labs found</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── Map Controls (Bottom-Right) — shift left when sidebar open ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="absolute bottom-6 z-30 flex flex-col gap-2"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="absolute z-40"
           style={{
-            right: isSidebarOpen ? "405px" : "20px",
-            transition: "right 0.3s ease",
+            top: isMobile ? "76px" : "80px",
+            left: isMobile ? "12px" : "20px",
           }}
         >
-          <button className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
-            <Layers className="w-4.5 h-4.5 text-gray-600" />
-          </button>
-          <button
+          <AnimatePresence mode="wait">
+            {!isSearchOpen ? (
+              /* ── Collapsed: floating icon pill ── */
+              <motion.button
+                key="search-icon"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.18 }}
+                onClick={handleSearchToggle}
+                className="w-11 h-11 bg-white rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-300 transition-all group"
+                title="Open search"
+              >
+                <Search className="w-5 h-5 text-gray-500 group-hover:text-emerald-600 transition-colors" />
+              </motion.button>
+            ) : (
+              /* ── Expanded: full search panel ── */
+              <motion.div
+                key="search-panel"
+                initial={{ opacity: 0, y: -10, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+                style={{ width: isMobile ? "calc(100vw - 24px)" : "360px" }}
+              >
+                {/* Panel header row */}
+                <div className="flex items-center justify-between px-3 pt-3 pb-1">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Find Labs
+                  </span>
+                  <button
+                    onClick={handleSearchToggle}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Inputs */}
+                <div className="px-3 pb-2 space-y-2">
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
+                    <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <input
+                      className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                      placeholder="Search tests, e.g. CBC, Thyroid…"
+                      value={searchTest}
+                      onChange={(e) => setSearchTest(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    />
+                    {searchTest && (
+                      <button onClick={() => setSearchTest("")}>
+                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <input
+                      className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                      placeholder="Area, city or pincode…"
+                      value={searchLocation}
+                      onChange={(e) => setSearchLocation(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    />
+                    {searchLocation && (
+                      <button onClick={() => setSearchLocation("")}>
+                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleSearch}
+                    disabled={isSearching || (!searchTest && !searchLocation)}
+                    className="w-full h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm shadow-emerald-500/30"
+                  >
+                    {isSearching ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Searching…
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4" />
+                        Search Labs
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Quick filters */}
+                <div className="px-3 pb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Popular
+                    </span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {QUICK_FILTERS.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => handleQuickFilter(tag)}
+                        className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${
+                          activeFilter === tag
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* ── Tab Pills (Top-Right) ── */}
+        {!isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="absolute z-30 flex items-center gap-1 bg-white rounded-xl shadow-lg border border-gray-100 p-1"
+            style={{
+              top: isMobile ? "76px" : "80px",
+              right: isMobile ? "12px" : "20px",
+            }}
+          >
+            {/* Labs tab */}
+            <button
+              onClick={handleLabsTab}
+              className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all ${
+                isSidebarOpen && sidebarTab === "labs"
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{nearbyLabs.length} </span>Labs
+            </button>
+
+            <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
+
+            {/* Bookings tab */}
+            <button
+              onClick={handleBookingsTab}
+              className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all relative ${
+                isSidebarOpen && sidebarTab === "bookings"
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">
+                {isAuthenticated
+                  ? isLoadingBookings
+                    ? "…"
+                    : `${recentBookings.length > 0 ? recentBookings.length + " " : ""}Bookings`
+                  : "Bookings"}
+              </span>
+              <span className="sm:hidden">
+                {isAuthenticated &&
+                !isLoadingBookings &&
+                recentBookings.length > 0
+                  ? recentBookings.length
+                  : "Book"}
+              </span>
+              {isAuthenticated &&
+                !(isSidebarOpen && sidebarTab === "bookings") &&
+                recentBookings.filter((b) => b.status === "PENDING").length >
+                  0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
+                    {
+                      recentBookings.filter((b) => b.status === "PENDING")
+                        .length
+                    }
+                  </span>
+                )}
+            </button>
+
+            {/* Close — only when sidebar is open */}
+            {isSidebarOpen && (
+              <>
+                <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </motion.div>
+        )}
+
+        {/* ── Stats Pill (Bottom-Left) — desktop only ── */}
+        {!isMobile && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="absolute bottom-6 left-5 z-30"
+          >
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-2.5 flex items-center gap-3">
+              <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-gray-900 leading-none">
+                  {nearbyLabs.length}
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Labs found</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Map Controls (Bottom-Right) — desktop only, shift left when sidebar open ── */}
+        {!isMobile && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="absolute bottom-6 z-30 flex flex-col gap-2"
+            style={{
+              right: isSidebarOpen ? "405px" : "20px",
+              transition: "right 0.3s ease",
+            }}
+          >
+            <button className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
+              <Layers className="w-4.5 h-4.5 text-gray-600" />
+            </button>
+            <button
+              onClick={getUserLocation}
+              className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors"
+              title="Go to my location"
+            >
+              <Navigation className="w-4.5 h-4.5 text-emerald-600" />
+            </button>
+          </motion.div>
+        )}
+
+        {/* ── Mobile: Location button (bottom-center) ── */}
+        {isMobile && (
+          <motion.button
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
             onClick={getUserLocation}
-            className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-11 h-11 bg-white rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center hover:bg-emerald-50 transition-colors"
             title="Go to my location"
           >
-            <Navigation className="w-4.5 h-4.5 text-emerald-600" />
-          </button>
-        </motion.div>
+            <Navigation className="w-5 h-5 text-emerald-600" />
+          </motion.button>
+        )}
 
         {/* ── Sidebar ── */}
         <AnimatePresence>
@@ -411,10 +541,15 @@ function Home() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ type: "spring", damping: 30, stiffness: 280 }}
-              className="absolute top-[88px] right-5 z-20 flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-              style={{ width: "380px", height: "calc(100% - 104px)" }}
+              className="absolute z-20 flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+              style={{
+                top: sidebarTop,
+                right: sidebarRight,
+                width: sidebarWidth,
+                height: sidebarHeight,
+              }}
             >
-              {/* ── Sidebar header ── */}
+              {/* Sidebar header */}
               <div className="px-5 pt-4 pb-0 border-b border-gray-100 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -471,7 +606,7 @@ function Home() {
                   </div>
                 </div>
 
-                {/* Underline tab switcher — both emerald when active */}
+                {/* Tab switcher */}
                 <div className="flex -mb-px">
                   <button
                     onClick={() => setSidebarTab("labs")}
@@ -484,11 +619,7 @@ function Home() {
                     <Building2 className="w-3.5 h-3.5" />
                     Labs
                     <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        sidebarTab === "labs"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sidebarTab === "labs" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
                     >
                       {nearbyLabs.length}
                     </span>
@@ -510,11 +641,7 @@ function Home() {
                     Bookings
                     {recentBookings.length > 0 && (
                       <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                          sidebarTab === "bookings"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sidebarTab === "bookings" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
                       >
                         {recentBookings.length}
                       </span>
@@ -527,7 +654,7 @@ function Home() {
                 </div>
               </div>
 
-              {/* ── Tab content ── */}
+              {/* Tab content */}
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 <AnimatePresence mode="wait">
                   {/* ── LABS TAB ── */}
@@ -628,8 +755,32 @@ function Home() {
                                     {lab.city}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-[10px] font-semibold px-2 py-1 rounded-full border border-emerald-200 flex-shrink-0">
-                                  <Shield className="w-3 h-3" /> Verified
+                                <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
+                                  {isLabOpen(
+                                    lab.openingTime,
+                                    lab.closingTime,
+                                  ) ? (
+                                    <div className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                                      <Clock className="w-3 h-3" /> Open
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 bg-red-50 text-red-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-red-200">
+                                      <Clock className="w-3 h-3" /> Closed
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                    {lab.avgRating
+                                      ? lab.avgRating.toFixed(1)
+                                      : "New"}
+                                    {lab.totalReviews ? (
+                                      <span className="text-gray-400 font-normal">
+                                        ({lab.totalReviews})
+                                      </span>
+                                    ) : (
+                                      ""
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex items-start gap-2 mb-2.5">
@@ -685,7 +836,6 @@ function Home() {
                       transition={{ duration: 0.15 }}
                       className="space-y-2"
                     >
-                      {/* Loading skeletons */}
                       {isLoadingBookings &&
                         [1, 2, 3].map((i) => (
                           <div
@@ -705,7 +855,6 @@ function Home() {
                           </div>
                         ))}
 
-                      {/* Error */}
                       {!isLoadingBookings && bookingsError && (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                           <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-3">
@@ -726,7 +875,6 @@ function Home() {
                         </div>
                       )}
 
-                      {/* Empty */}
                       {!isLoadingBookings &&
                         !bookingsError &&
                         recentBookings.length === 0 && (
@@ -749,7 +897,6 @@ function Home() {
                           </div>
                         )}
 
-                      {/* Booking cards */}
                       {!isLoadingBookings &&
                         !bookingsError &&
                         recentBookings.map((booking, idx) => {
@@ -764,8 +911,6 @@ function Home() {
                             booking.bookingTests
                               ?.map((bt) => bt.name)
                               .filter(Boolean) ?? [];
-                          // console.log("Total price: ", booking.bookingTests);
-                          console.log("Test names: ", testNames);
                           return (
                             <motion.div
                               key={booking.id}
@@ -774,15 +919,12 @@ function Home() {
                               transition={{ delay: idx * 0.045 }}
                               className="rounded-2xl border border-gray-100 bg-white overflow-hidden hover:shadow-sm transition-shadow"
                             >
-                              {/* Left-side status accent bar */}
                               <div className="flex min-w-0">
                                 <div
                                   className="w-1 rounded-l-2xl flex-shrink-0"
                                   style={{ background: cfg.dot || "#e5e7eb" }}
                                 />
-
                                 <div className="flex-1 min-w-0 p-4">
-                                  {/* Top row */}
                                   <div className="flex items-start gap-3 mb-2.5">
                                     <div className="w-9 h-9 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0">
                                       <Building2 className="w-4 h-4 text-emerald-600" />
@@ -811,7 +953,6 @@ function Home() {
                                     </span>
                                   </div>
 
-                                  {/* Timeslot + price */}
                                   <div className="flex items-center gap-3 mb-2.5">
                                     {booking.timeSlot && (
                                       <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
@@ -827,7 +968,6 @@ function Home() {
                                     )}
                                   </div>
 
-                                  {/* Test name chips */}
                                   {testNames.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mb-3">
                                       {testNames.map((name, i) => (
@@ -842,14 +982,12 @@ function Home() {
                                     </div>
                                   )}
 
-                                  {/* Reports — only for COMPLETED */}
                                   {booking.status === "COMPLETED" && (
                                     <BookingReportLinks
                                       bookingTests={booking.bookingTests}
                                     />
                                   )}
 
-                                  {/* Footer: Details → /my-bookings | Book again → /lab/:id */}
                                   <div className="pt-2.5 border-t border-gray-50 flex items-center justify-between">
                                     <Link
                                       to="/my-bookings"
@@ -874,7 +1012,6 @@ function Home() {
                           );
                         })}
 
-                      {/* See all */}
                       {!isLoadingBookings &&
                         !bookingsError &&
                         recentBookings.length > 0 && (
@@ -899,8 +1036,7 @@ function Home() {
   );
 }
 
-// ── BookingReportLinks — lazy fetches reports per bookingTest ─────────────────
-
+// ── BookingReportLinks ────────────────────────────────────────────────────────
 function BookingReportLinks({ bookingTests }) {
   const [reportMap, setReportMap] = useState({});
   const [loadingIds, setLoadingIds] = useState(new Set());

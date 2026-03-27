@@ -141,6 +141,7 @@ public class ReviewService {
             res.add(new GetLabReviewsResponse(
                     r.getId(),
                     r.getComment(),
+                    r.getRating(),
                     new UserResponse(
                             r.getUser().getName(),
                             r.getUser().getId(),

@@ -28,6 +28,8 @@ public interface LabRepo extends JpaRepository<Lab, Long> {
             l.slot_capacity_online AS slotCapacityOnline,
             l.opening_time AS openingTime,
             l.closing_time AS closingTime,
+            l.total_reviews AS totalReviews,
+            l.avg_rating AS avgRating,
             (
                 6371 * acos(
                     cos(radians(:lat))

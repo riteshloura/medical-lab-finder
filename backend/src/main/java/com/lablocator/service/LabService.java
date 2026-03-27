@@ -31,6 +31,7 @@ public class LabService {
                     lab.getCity(), lab.getState(), lab.getContactNumber(),
                     lab.getId(), lab.getLatitude(), lab.getLongitude(),
                     lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                    lab.getTotalReviews(), lab.getAvgRating(),
                     Math.round(lab.getDistance() * 100.0) / 100.0
             ));
         }
