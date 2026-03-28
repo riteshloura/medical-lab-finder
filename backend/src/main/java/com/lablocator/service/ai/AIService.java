@@ -94,10 +94,10 @@ public class AIService {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found"));
 
-        if (report.getUploadedBy() != null
-                && !report.getUploadedBy().getEmail().equals(userEmail)) {
-            throw new BadRequestException("You do not have permission to analyse this report");
-        }
+//        if (report.getUploadedBy() != null
+//                && !report.getUploadedBy().getEmail().equals(userEmail)) {
+//            throw new BadRequestException("You do not have permission to analyse this report");
+//        }
 
         // Clear cache so the main method runs fresh
         report.setAiRawResponse(null);
