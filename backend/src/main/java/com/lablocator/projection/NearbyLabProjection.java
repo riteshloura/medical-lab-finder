@@ -15,6 +15,8 @@ public interface NearbyLabProjection {
     Integer getSlotCapacityOnline();
     LocalTime getOpeningTime();
     LocalTime getClosingTime();
+    Integer getTotalReviews();
+    Double getAvgRating();
 
     Double getDistance();
 }

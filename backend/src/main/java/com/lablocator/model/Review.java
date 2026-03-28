@@ -23,7 +23,7 @@ public class Review {
     private String comment;
     @Min(1)
     @Max(5)
-    private int rating;
+    private Integer rating;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

@@ -40,7 +40,7 @@ const Sk = ({ className }) => (
 );
 
 // Generates 30-min slots between two LocalTime arrays e.g. [9,0] and [18,0]
-const generateSlots = (opening, closing) => {
+const generateSlots = (opening, closing, isToday) => {
   if (!opening || !closing) return [];
 
   // Normalize Spring's [H, m] array OR "HH:mm"/"HH:mm:ss" string
@@ -56,14 +56,54 @@ const generateSlots = (opening, closing) => {
     const hh = String(h % 12 || 12).padStart(2, "0");
     const mm = String(m).padStart(2, "0");
     const ampm = h >= 12 ? "PM" : "AM";
-    return { label: `${hh}:${mm} ${ampm}`, value: `${String(h).padStart(2, "0")}:${mm}` };
+    return {
+      label: `${hh}:${mm} ${ampm}`,
+      value: `${String(h).padStart(2, "0")}:${mm}`,
+    };
   };
 
   const start = toMinutes(opening);
   const end = toMinutes(closing);
+  let currentMins = 0;
+
+  if (isToday) {
+    const now = new Date();
+    currentMins = now.getHours() * 60 + now.getMinutes();
+  }
+
   const slots = [];
-  for (let t = start; t < end; t += 30) slots.push(toLabel(t));
+  for (let t = start; t < end; t += 30) {
+    const slot = toLabel(t);
+    if (isToday && t <= currentMins) {
+      continue;
+    }
+    slots.push(slot);
+  }
   return slots;
+};
+
+const isLabOpen = (openingTime, closingTime) => {
+  if (!openingTime || !closingTime) return false;
+  try {
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    const parseTime = (t) => {
+      if (Array.isArray(t)) return t[0] * 60 + (t[1] || 0);
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const openMins = parseTime(openingTime);
+    const closeMins = parseTime(closingTime);
+
+    if (closeMins < openMins) {
+      return currentMins >= openMins || currentMins <= closeMins;
+    }
+    return currentMins >= openMins && currentMins <= closeMins;
+  } catch (e) {
+    return false;
+  }
 };
 
 /* ─────────────────────────────────────────
@@ -108,7 +148,7 @@ export default function LabDetails() {
         setIsLoadingLab(true);
         const res = await api.get(`/labs/${labId}`);
         setLab(res.data);
-        console.log("LAb res: ", res)
+        // console.log("LAb res: ", res);
       } catch (err) {
         console.error("Error fetching lab:", err);
         setLabError("Could not load lab details.");
@@ -143,6 +183,7 @@ export default function LabDetails() {
         setIsLoadingReviews(true);
         const res = await api.get(`/lab/${labId}/review`);
         setReviews(res.data);
+        // console.log("Review ", res.data);
       } catch (err) {
         console.error("Error fetching reviews:", err);
         setReviewsError("Could not load reviews.");
@@ -161,7 +202,7 @@ export default function LabDetails() {
     setCart((prev) =>
       prev.find((t) => sameTest(t, test))
         ? prev.filter((t) => !sameTest(t, test))
-        : [...prev, test]
+        : [...prev, test],
     );
   }, []);
 
@@ -175,7 +216,10 @@ export default function LabDetails() {
 
   /* ── submit booking ── */
   const handleBooking = async () => {
-    if (!bookingDate) { setBookingError("Please select a date."); return; }
+    if (!bookingDate) {
+      setBookingError("Please select a date.");
+      return;
+    }
     if (!timeSlot) {
       setBookingError("Please select a time slot.");
       return;
@@ -190,9 +234,10 @@ export default function LabDetails() {
 
       // Build LocalDateTime string: "YYYY-MM-DDTHH:mm:ss"
       const today = new Date();
-      const date = bookingDate === "tomorrow"
-        ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-        : new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const date =
+        bookingDate === "tomorrow"
+          ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+          : new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
       const yyyy = date.getFullYear();
       const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -202,7 +247,7 @@ export default function LabDetails() {
 
       await api.post(`/labs/${labId}/booking`, {
         testIds: cart.map((t) => t.id),
-        timeSlot: timeStr,           // LocalTime
+        timeSlot: timeStr, // LocalTime
         bookingDate: `${dateStr}T${timeStr}`, // LocalDateTime
       });
       // // Java LocalTime expects "HH:MM:SS"
@@ -219,7 +264,9 @@ export default function LabDetails() {
         err.response?.data?.message ||
         err.response?.data ||
         "Booking failed. Please try again.";
-      setBookingError(typeof msg === "string" ? msg : "Booking failed. Please try again.");
+      setBookingError(
+        typeof msg === "string" ? msg : "Booking failed. Please try again.",
+      );
     } finally {
       setIsBooking(false);
     }
@@ -236,13 +283,17 @@ export default function LabDetails() {
   };
 
   /* ── filters ── */
-  const categories = ["All", ...new Set(tests.map((t) => t.category).filter(Boolean))];
+  const categories = [
+    "All",
+    ...new Set(tests.map((t) => t.category).filter(Boolean)),
+  ];
   const filteredTests = tests.filter((t) => {
     const matchesSearch =
       !searchTest ||
       t.name?.toLowerCase().includes(searchTest.toLowerCase()) ||
       t.description?.toLowerCase().includes(searchTest.toLowerCase());
-    const matchesCategory = activeCategory === "All" || t.category === activeCategory;
+    const matchesCategory =
+      activeCategory === "All" || t.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -251,7 +302,6 @@ export default function LabDetails() {
       <Navbar />
 
       <div className="max-w-5xl mx-auto px-4 py-8 pt-24 pb-32">
-
         {/* ── Back button ── */}
         <motion.button
           initial={{ opacity: 0, x: -12 }}
@@ -295,30 +345,71 @@ export default function LabDetails() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">{lab.name}</h1>
-                    <span className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">
-                      <Shield className="w-3 h-3" />Verified
-                    </span>
+                    <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">
+                      {lab.name}
+                    </h1>
+                    {isLabOpen(lab.openingTime, lab.closingTime) ? (
+                      <span className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">
+                        <Clock className="w-3 h-3" />
+                        Open
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full border border-red-200">
+                        <Clock className="w-3 h-3" />
+                        Closed
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-400 mt-1">{lab.city}</p>
                 </div>
-                {lab.rating && (
-                  <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-600 px-3 py-1.5 rounded-xl font-bold text-sm flex-shrink-0">
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    {lab.rating}
-                  </div>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {lab.rating || lab.avgRating ? (
+                    <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-600 px-3 py-1.5 rounded-xl font-bold text-sm flex-shrink-0">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                      {(lab.rating || lab.avgRating).toFixed(1)}
+                      {lab.totalReviews > 0 && (
+                        <span className="text-xs text-amber-600/70 font-medium">
+                          ({lab.totalReviews})
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-xl font-bold text-sm flex-shrink-0">
+                      <Star className="w-4 h-4 fill-gray-300 text-gray-400" />
+                      New
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Info grid */}
               <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                {lab.address && <InfoRow icon={<MapPin className="w-4 h-4 text-emerald-500" />} label={lab.address} />}
-                {lab.contactNumber && <InfoRow icon={<Phone className="w-4 h-4 text-emerald-500" />} label={lab.contactNumber} />}
+                {lab.address && (
+                  <InfoRow
+                    icon={<MapPin className="w-4 h-4 text-emerald-500" />}
+                    label={lab.address}
+                  />
+                )}
+                {lab.contactNumber && (
+                  <InfoRow
+                    icon={<Phone className="w-4 h-4 text-emerald-500" />}
+                    label={lab.contactNumber}
+                  />
+                )}
                 {lab.openingTime && lab.closingTime && (
-                  <InfoRow icon={<Clock className="w-4 h-4 text-emerald-500" />} label={`${lab.openingTime} – ${lab.closingTime}`} />
+                  <InfoRow
+                    icon={<Clock className="w-4 h-4 text-emerald-500" />}
+                    label={`${lab.openingTime.slice(0, 5)} – ${lab.closingTime.slice(0, 5)}`}
+                  />
                 )}
                 {lab.slotCapacityOnline > 0 && (
-                  <InfoRow icon={<CalendarCheck className="w-4 h-4 text-emerald-500" />} label={`${lab.slotCapacityOnline} online slots available`} highlight />
+                  <InfoRow
+                    icon={
+                      <CalendarCheck className="w-4 h-4 text-emerald-500" />
+                    }
+                    label={`${lab.slotCapacityOnline} online slots available`}
+                    highlight
+                  />
                 )}
               </div>
 
@@ -353,9 +444,13 @@ export default function LabDetails() {
                 <FlaskConical className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-extrabold text-gray-900">Available Tests</h2>
+                <h2 className="text-xl font-extrabold text-gray-900">
+                  Available Tests
+                </h2>
                 {!isLoadingTests && (
-                  <p className="text-xs text-gray-400">{filteredTests.length} of {tests.length} tests</p>
+                  <p className="text-xs text-gray-400">
+                    {filteredTests.length} of {tests.length} tests
+                  </p>
                 )}
               </div>
             </div>
@@ -380,10 +475,11 @@ export default function LabDetails() {
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${activeCategory === cat
-                        ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
-                        : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
-                        }`}
+                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${
+                        activeCategory === cat
+                          ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
+                      }`}
                     >
                       {cat}
                     </button>
@@ -397,13 +493,23 @@ export default function LabDetails() {
           {isLoadingTests && (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3"
+                >
                   <div className="flex items-center gap-3">
                     <Sk className="w-10 h-10 rounded-xl flex-shrink-0" />
-                    <div className="flex-1 space-y-2"><Sk className="w-3/4 h-4" /><Sk className="w-1/2 h-3" /></div>
+                    <div className="flex-1 space-y-2">
+                      <Sk className="w-3/4 h-4" />
+                      <Sk className="w-1/2 h-3" />
+                    </div>
                   </div>
-                  <Sk className="w-full h-3" /><Sk className="w-2/3 h-3" />
-                  <div className="flex justify-between pt-1"><Sk className="w-16 h-6 rounded-full" /><Sk className="w-20 h-8 rounded-xl" /></div>
+                  <Sk className="w-full h-3" />
+                  <Sk className="w-2/3 h-3" />
+                  <div className="flex justify-between pt-1">
+                    <Sk className="w-16 h-6 rounded-full" />
+                    <Sk className="w-20 h-8 rounded-xl" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -415,7 +521,9 @@ export default function LabDetails() {
               <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
                 <AlertCircle className="w-7 h-7 text-red-400" />
               </div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">Failed to load tests</p>
+              <p className="text-sm font-semibold text-gray-700 mb-1">
+                Failed to load tests
+              </p>
               <p className="text-xs text-gray-400">{testsError}</p>
             </div>
           )}
@@ -426,21 +534,32 @@ export default function LabDetails() {
               <div className="w-14 h-14 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
                 <TestTube2 className="w-7 h-7 text-violet-300" />
               </div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">No tests listed yet</p>
-              <p className="text-xs text-gray-400">This lab hasn't added any tests.</p>
+              <p className="text-sm font-semibold text-gray-700 mb-1">
+                No tests listed yet
+              </p>
+              <p className="text-xs text-gray-400">
+                This lab hasn't added any tests.
+              </p>
             </div>
           )}
 
           {/* No results */}
-          {!isLoadingTests && !testsError && tests.length > 0 && filteredTests.length === 0 && (
-            <div className="flex flex-col items-center py-12 text-center">
-              <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
-                <Search className="w-6 h-6 text-gray-300" />
+          {!isLoadingTests &&
+            !testsError &&
+            tests.length > 0 &&
+            filteredTests.length === 0 && (
+              <div className="flex flex-col items-center py-12 text-center">
+                <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
+                  <Search className="w-6 h-6 text-gray-300" />
+                </div>
+                <p className="text-sm font-semibold text-gray-600">
+                  No matching tests
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Try a different search or category
+                </p>
               </div>
-              <p className="text-sm font-semibold text-gray-600">No matching tests</p>
-              <p className="text-xs text-gray-400 mt-0.5">Try a different search or category</p>
-            </div>
-          )}
+            )}
 
           {/* Tests grid */}
           {!isLoadingTests && !testsError && filteredTests.length > 0 && (
@@ -475,7 +594,9 @@ export default function LabDetails() {
             <div>
               <h2 className="text-xl font-extrabold text-gray-900">Reviews</h2>
               {!isLoadingReviews && (
-                <p className="text-xs text-gray-400">{reviews.length} review{reviews.length !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-gray-400">
+                  {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                </p>
               )}
             </div>
           </div>
@@ -489,7 +610,8 @@ export default function LabDetails() {
               <div>
                 <StarRow rating={lab.avgRating || 0} />
                 <p className="text-xs text-amber-700 font-semibold mt-1">
-                  Based on {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                  Based on {reviews.length} review
+                  {reviews.length !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
@@ -499,7 +621,10 @@ export default function LabDetails() {
           {isLoadingReviews && (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3"
+                >
                   <div className="flex items-center gap-3">
                     <Sk className="w-9 h-9 rounded-full flex-shrink-0" />
                     <div className="flex-1 space-y-2">
@@ -528,8 +653,12 @@ export default function LabDetails() {
               <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
                 <MessageSquare className="w-7 h-7 text-amber-300" />
               </div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">No reviews yet</p>
-              <p className="text-xs text-gray-400">Be the first to review this lab after your visit.</p>
+              <p className="text-sm font-semibold text-gray-700 mb-1">
+                No reviews yet
+              </p>
+              <p className="text-xs text-gray-400">
+                Be the first to review this lab after your visit.
+              </p>
             </div>
           )}
 
@@ -554,7 +683,9 @@ export default function LabDetails() {
             className="fixed bottom-6 right-6 z-40 flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold px-5 py-3.5 rounded-2xl shadow-xl shadow-emerald-500/30 transition-all"
           >
             <ShoppingCart className="w-5 h-5" />
-            <span>{cart.length} test{cart.length > 1 ? "s" : ""} selected</span>
+            <span>
+              {cart.length} test{cart.length > 1 ? "s" : ""} selected
+            </span>
             <span className="bg-white/20 text-white text-sm font-extrabold px-2 py-0.5 rounded-lg">
               ₹{totalPrice}
             </span>
@@ -591,7 +722,9 @@ export default function LabDetails() {
                     <CalendarCheck className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-extrabold text-gray-900">Book Tests</h2>
+                    <h2 className="text-lg font-extrabold text-gray-900">
+                      Book Tests
+                    </h2>
                     <p className="text-xs text-gray-400">{lab?.name}</p>
                   </div>
                 </div>
@@ -605,7 +738,6 @@ export default function LabDetails() {
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-
                 {/* Success State */}
                 {bookingSuccess ? (
                   <motion.div
@@ -621,16 +753,25 @@ export default function LabDetails() {
                       </div>
                     </div>
 
-                    <h3 className="text-xl font-extrabold text-gray-900 mb-2">Booking Confirmed!</h3>
+                    <h3 className="text-xl font-extrabold text-gray-900 mb-2">
+                      Booking Confirmed!
+                    </h3>
                     <p className="text-sm text-gray-500 mb-1">
                       Your appointment has been booked at
                     </p>
-                    <p className="text-sm font-bold text-emerald-600 mb-6">{lab?.name}</p>
+                    <p className="text-sm font-bold text-emerald-600 mb-6">
+                      {lab?.name}
+                    </p>
 
                     {/* Info box */}
                     <div className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-6 text-left space-y-1">
-                      <p className="text-xs font-bold text-emerald-700">What happens next?</p>
-                      <p className="text-xs text-emerald-600">The lab will review and confirm your appointment. You can track the status in My Bookings.</p>
+                      <p className="text-xs font-bold text-emerald-700">
+                        What happens next?
+                      </p>
+                      <p className="text-xs text-emerald-600">
+                        The lab will review and confirm your appointment. You
+                        can track the status in My Bookings.
+                      </p>
                     </div>
 
                     {/* CTAs */}
@@ -655,7 +796,9 @@ export default function LabDetails() {
                     {/* Selected tests */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-bold text-gray-700">Selected Tests</h3>
+                        <h3 className="text-sm font-bold text-gray-700">
+                          Selected Tests
+                        </h3>
                         {cart.length > 0 && (
                           <button
                             onClick={clearCart}
@@ -670,8 +813,12 @@ export default function LabDetails() {
                       {cart.length === 0 ? (
                         <div className="flex flex-col items-center py-8 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                           <TestTube2 className="w-8 h-8 text-gray-300 mb-2" />
-                          <p className="text-sm font-semibold text-gray-500">No tests selected</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Go back and click + on any test to add it</p>
+                          <p className="text-sm font-semibold text-gray-500">
+                            No tests selected
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Go back and click + on any test to add it
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-2">
@@ -688,9 +835,13 @@ export default function LabDetails() {
                                 <FlaskConical className="w-3.5 h-3.5 text-violet-600" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-800 truncate">{test.name}</p>
+                                <p className="text-sm font-semibold text-gray-800 truncate">
+                                  {test.name}
+                                </p>
                                 {test.price != null && (
-                                  <p className="text-xs text-emerald-600 font-bold">₹{test.price}</p>
+                                  <p className="text-xs text-emerald-600 font-bold">
+                                    ₹{test.price}
+                                  </p>
                                 )}
                               </div>
                               <button
@@ -713,23 +864,38 @@ export default function LabDetails() {
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                         {["today", "tomorrow"].map((day) => {
-                          const date = day === "today" ? new Date() : new Date(Date.now() + 86400000);
+                          const date =
+                            day === "today"
+                              ? new Date()
+                              : new Date(Date.now() + 86400000);
                           const label = day === "today" ? "Today" : "Tomorrow";
-                          const sub = date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+                          const sub = date.toLocaleDateString("en-IN", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          });
                           return (
                             <button
                               key={day}
                               type="button"
-                              onClick={() => { setBookingDate(day); setBookingError(""); }}
-                              className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all ${bookingDate === day
-                                ? "border-emerald-400 bg-emerald-50 shadow-sm"
-                                : "border-gray-200 bg-white hover:border-emerald-200"
-                                }`}
+                              onClick={() => {
+                                setBookingDate(day);
+                                setBookingError("");
+                              }}
+                              className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all ${
+                                bookingDate === day
+                                  ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                                  : "border-gray-200 bg-white hover:border-emerald-200"
+                              }`}
                             >
-                              <span className={`text-sm font-bold ${bookingDate === day ? "text-emerald-700" : "text-gray-800"}`}>
+                              <span
+                                className={`text-sm font-bold ${bookingDate === day ? "text-emerald-700" : "text-gray-800"}`}
+                              >
                                 {label}
                               </span>
-                              <span className={`text-xs mt-0.5 ${bookingDate === day ? "text-emerald-500" : "text-gray-400"}`}>
+                              <span
+                                className={`text-xs mt-0.5 ${bookingDate === day ? "text-emerald-500" : "text-gray-400"}`}
+                              >
                                 {sub}
                               </span>
                             </button>
@@ -750,7 +916,9 @@ export default function LabDetails() {
                             {(() => {
                               const fmt = (v) => {
                                 if (!v) return "";
-                                const [h, m] = Array.isArray(v) ? v : v.split(":").map(Number);
+                                const [h, m] = Array.isArray(v)
+                                  ? v
+                                  : v.split(":").map(Number);
                                 const ampm = h >= 12 ? "PM" : "AM";
                                 return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
                               };
@@ -762,20 +930,30 @@ export default function LabDetails() {
 
                       {lab?.openingTime && lab?.closingTime ? (
                         (() => {
-                          const slots = generateSlots(lab.openingTime, lab.closingTime);
+                          const slots = generateSlots(
+                            lab.openingTime,
+                            lab.closingTime,
+                            bookingDate === "today",
+                          );
                           return slots.length === 0 ? (
-                            <p className="text-xs text-gray-400">No slots available for this lab's hours.</p>
+                            <p className="text-xs text-gray-400">
+                              No slots available for the selected date/time.
+                            </p>
                           ) : (
                             <div className="grid grid-cols-3 gap-2">
                               {slots.map(({ label, value }) => (
                                 <button
                                   key={value}
                                   type="button"
-                                  onClick={() => { setTimeSlot(value); setBookingError(""); }}
-                                  className={`py-2 px-1 rounded-xl text-xs font-semibold border transition-all ${timeSlot === value
-                                    ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
-                                    : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
-                                    }`}
+                                  onClick={() => {
+                                    setTimeSlot(value);
+                                    setBookingError("");
+                                  }}
+                                  className={`py-2 px-1 rounded-xl text-xs font-semibold border transition-all ${
+                                    timeSlot === value
+                                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                                      : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
+                                  }`}
                                 >
                                   {label}
                                 </button>
@@ -788,7 +966,10 @@ export default function LabDetails() {
                         <input
                           type="time"
                           value={timeSlot}
-                          onChange={(e) => { setTimeSlot(e.target.value); setBookingError(""); }}
+                          onChange={(e) => {
+                            setTimeSlot(e.target.value);
+                            setBookingError("");
+                          }}
                           className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all text-gray-800 font-semibold"
                         />
                       )}
@@ -811,12 +992,16 @@ export default function LabDetails() {
                       <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
                         <div className="flex justify-between text-sm text-gray-500">
                           <span>Tests</span>
-                          <span className="font-semibold text-gray-800">{cart.length}</span>
+                          <span className="font-semibold text-gray-800">
+                            {cart.length}
+                          </span>
                         </div>
                         {totalPrice > 0 && (
                           <div className="flex justify-between text-sm font-extrabold text-gray-900 border-t border-gray-200 pt-2">
                             <span>Total</span>
-                            <span className="text-emerald-600">₹{totalPrice}</span>
+                            <span className="text-emerald-600">
+                              ₹{totalPrice}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -832,7 +1017,12 @@ export default function LabDetails() {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleBooking}
-                    disabled={isBooking || cart.length === 0 || !timeSlot || !bookingDate}
+                    disabled={
+                      isBooking ||
+                      cart.length === 0 ||
+                      !timeSlot ||
+                      !bookingDate
+                    }
                     className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-md shadow-emerald-200 transition-all"
                   >
                     {isBooking ? (
@@ -845,7 +1035,9 @@ export default function LabDetails() {
                         <CalendarCheck className="w-5 h-5" />
                         Confirm Booking
                         {cart.length > 0 && totalPrice > 0 && (
-                          <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-lg text-sm">₹{totalPrice}</span>
+                          <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-lg text-sm">
+                            ₹{totalPrice}
+                          </span>
                         )}
                       </>
                     )}
@@ -866,9 +1058,15 @@ export default function LabDetails() {
 
 function InfoRow({ icon, label, highlight }) {
   return (
-    <div className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl ${highlight ? "bg-emerald-50 border border-emerald-100" : "bg-gray-50"}`}>
+    <div
+      className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl ${highlight ? "bg-emerald-50 border border-emerald-100" : "bg-gray-50"}`}
+    >
       <div className="mt-0.5 flex-shrink-0">{icon}</div>
-      <span className={`text-sm ${highlight ? "text-emerald-700 font-semibold" : "text-gray-600"} leading-relaxed`}>{label}</span>
+      <span
+        className={`text-sm ${highlight ? "text-emerald-700 font-semibold" : "text-gray-600"} leading-relaxed`}
+      >
+        {label}
+      </span>
     </div>
   );
 }
@@ -880,10 +1078,11 @@ function TestCard({ test, idx, inCart, onToggle }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: idx * 0.04, duration: 0.3 }}
-      className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${inCart
-        ? "border-emerald-400 shadow-md shadow-emerald-50"
-        : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
-        }`}
+      className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${
+        inCart
+          ? "border-emerald-400 shadow-md shadow-emerald-50"
+          : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
+      }`}
     >
       {/* Selected badge */}
       {inCart && (
@@ -895,18 +1094,32 @@ function TestCard({ test, idx, inCart, onToggle }) {
       )}
 
       {/* Accent bar */}
-      <div className={`h-0.5 bg-gradient-to-r transition-opacity ${inCart ? "from-emerald-400 to-teal-400 opacity-100" : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
-        }`} />
+      <div
+        className={`h-0.5 bg-gradient-to-r transition-opacity ${
+          inCart
+            ? "from-emerald-400 to-teal-400 opacity-100"
+            : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
+        }`}
+      />
 
       <div className="p-4">
         {/* Top row */}
         <div className="flex items-start gap-3 mb-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${inCart ? "bg-emerald-50" : "bg-violet-50 group-hover:bg-violet-100"
-            }`}>
-            <FlaskConical className={`w-5 h-5 ${inCart ? "text-emerald-500" : "text-violet-500"}`} />
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+              inCart
+                ? "bg-emerald-50"
+                : "bg-violet-50 group-hover:bg-violet-100"
+            }`}
+          >
+            <FlaskConical
+              className={`w-5 h-5 ${inCart ? "text-emerald-500" : "text-violet-500"}`}
+            />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 pr-5">{test.name}</h3>
+            <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 pr-5">
+              {test.name}
+            </h3>
             {test.category && (
               <span className="inline-flex items-center gap-1 text-[10px] text-violet-500 font-semibold bg-violet-50 px-2 py-0.5 rounded-full mt-1">
                 <Tag className="w-2.5 h-2.5" />
@@ -918,7 +1131,9 @@ function TestCard({ test, idx, inCart, onToggle }) {
 
         {/* Description */}
         {test.description && (
-          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{test.description}</p>
+          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">
+            {test.description}
+          </p>
         )}
 
         {/* Footer: price + add/remove */}
@@ -936,15 +1151,20 @@ function TestCard({ test, idx, inCart, onToggle }) {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             onClick={onToggle}
-            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${inCart
-              ? "bg-red-400 hover:bg-red-500"
-              : "bg-gray-900 hover:bg-emerald-500"
-              }`}
+            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+              inCart
+                ? "bg-red-400 hover:bg-red-500"
+                : "bg-gray-900 hover:bg-emerald-500"
+            }`}
           >
             {inCart ? (
-              <><Minus className="w-3 h-3" /> Remove</>
+              <>
+                <Minus className="w-3 h-3" /> Remove
+              </>
             ) : (
-              <><Plus className="w-3 h-3" /> Add</>
+              <>
+                <Plus className="w-3 h-3" /> Add
+              </>
             )}
           </motion.button>
         </div>
@@ -959,7 +1179,9 @@ function ErrorState({ message, onBack }) {
       <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-5">
         <AlertCircle className="w-8 h-8 text-red-400" />
       </div>
-      <h2 className="text-lg font-bold text-gray-800 mb-1">Oops! Something went wrong</h2>
+      <h2 className="text-lg font-bold text-gray-800 mb-1">
+        Oops! Something went wrong
+      </h2>
       <p className="text-sm text-gray-500 mb-6">{message}</p>
       <button
         onClick={onBack}
@@ -984,7 +1206,10 @@ function StarRow({ rating }) {
   return (
     <div className="flex gap-0.5">
       {[...Array(Math.max(0, totalFull))].map((_, i) => (
-        <Star key={`full-${i}`} className="w-4 h-4 fill-amber-400 text-amber-400" />
+        <Star
+          key={`full-${i}`}
+          className="w-4 h-4 fill-amber-400 text-amber-400"
+        />
       ))}
       {halfStar && (
         <div className="relative w-4 h-4">
@@ -1004,8 +1229,12 @@ function StarRow({ rating }) {
 function ReviewCard({ review }) {
   // Format date correctly
   const formattedDate = review.uploaded_at
-    ? new Date(review.uploaded_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '';
+    ? new Date(review.uploaded_at).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-shadow">
@@ -1015,10 +1244,19 @@ function ReviewCard({ review }) {
             <UserCircle2 className="w-6 h-6 text-emerald-500 stroke-[1.5]" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900">{review.user?.name || "Verified User"}</p>
-            {formattedDate && <p className="text-xs text-gray-400">{formattedDate}</p>}
+            <p className="text-sm font-bold text-gray-900">
+              {review.user?.name || "Verified User"}
+            </p>
+            {formattedDate && (
+              <p className="text-xs text-gray-400">{formattedDate}</p>
+            )}
           </div>
         </div>
+        {review.rating != null && (
+          <div className="flex bg-amber-50/50 px-2 py-1 rounded-lg border border-amber-100 items-center justify-center">
+            <StarRow rating={review.rating} />
+          </div>
+        )}
       </div>
       <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-xl px-4 py-3">
         {review.review}

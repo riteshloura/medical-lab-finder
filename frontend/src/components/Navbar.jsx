@@ -53,9 +53,14 @@ function Navbar() {
                 </button>
 
                 {/* User dropdown */}
-                <Dropdown placement="bottom-end">
+                <Dropdown 
+                  placement="bottom-end"
+                  classNames={{
+                    content: "p-2 min-w-[240px] bg-white/90 backdrop-blur-xl border border-white/60 shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-2xl"
+                  }}
+                >
                   <DropdownTrigger>
-                    <button className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 py-1 rounded-xl shadow-lg border border-white/60 hover:bg-white transition-colors">
+                    <button className="flex items-center gap-2 bg-white/95 backdrop-blur-sm pl-1 pr-3 py-1 rounded-xl shadow-lg border border-white/60 hover:bg-white transition-all duration-200 hover:scale-[1.03] active:scale-95">
                       <Avatar
                         size="sm"
                         name={user?.name || "U"}
@@ -66,34 +71,69 @@ function Navbar() {
                       </span>
                     </button>
                   </DropdownTrigger>
-                  <DropdownMenu aria-label="User menu" className="w-52">
-                    <DropdownItem key="user-info" className="h-14 gap-2" textValue="User info">
+                  <DropdownMenu 
+                    aria-label="User menu"
+                    itemClasses={{
+                      base: [
+                        "rounded-xl",
+                        "text-gray-700",
+                        "transition-all",
+                        "duration-200",
+                        "data-[hover=true]:text-emerald-700",
+                        "data-[hover=true]:bg-emerald-50",
+                        "py-2.5",
+                        "px-3"
+                      ],
+                      title: "text-sm font-semibold",
+                    }}
+                  >
+                    <DropdownItem key="user-info" className="h-auto py-3 mb-2 opacity-100 data-[hover=true]:bg-transparent pb-4 border-b border-gray-100/80 rounded-none px-2" isReadOnly textValue="User info">
                       <div className="flex items-center gap-3">
                         <Avatar
-                          size="sm"
+                          size="md"
                           name={user?.name || "U"}
-                          className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-400 text-white"
+                          className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-400 border border-emerald-100 text-white flex-shrink-0 shadow-sm"
                         />
-                        <div className="flex flex-col">
-                          <p className="font-semibold text-sm leading-tight">{user?.name || "User"}</p>
-                          <p className="text-xs text-gray-400 truncate max-w-[110px]">{user?.email || ""}</p>
+                        <div className="flex flex-col min-w-0">
+                          <p className="font-bold text-sm text-gray-900 leading-tight truncate">{user?.name || "User"}</p>
+                          <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
                         </div>
                       </div>
                     </DropdownItem>
-                    <DropdownItem key="profile" startContent={<User className="w-4 h-4" />}>My Profile</DropdownItem>
+                    
+                    <DropdownItem key="profile" startContent={<User className="w-4.5 h-4.5 text-emerald-500 mr-2" />}>
+                      My Profile
+                    </DropdownItem>
+                    
                     {isLabOwner ? (
                       <DropdownItem
                         key="dashboard"
-                        startContent={<Building2 className="w-4 h-4" />}
+                        startContent={<Building2 className="w-4.5 h-4.5 text-emerald-500 mr-2" />}
                         onClick={() => navigate("/owner/dashboard")}
                       >
                         Owner Dashboard
                       </DropdownItem>
                     ) : (
-                      <DropdownItem key="bookings" startContent={<FileText className="w-4 h-4" />} onClick={() => navigate("/my-bookings")}>My Bookings</DropdownItem>
+                      <DropdownItem 
+                        key="bookings" 
+                        startContent={<FileText className="w-4.5 h-4.5 text-emerald-500 mr-2" />} 
+                        onClick={() => navigate("/my-bookings")}
+                      >
+                        My Bookings
+                      </DropdownItem>
                     )}
-                    <DropdownItem key="settings" startContent={<Settings className="w-4 h-4" />}>Settings</DropdownItem>
-                    <DropdownItem key="logout" color="danger" startContent={<LogOut className="w-4 h-4" />} onClick={handleLogout}>
+                    
+                    <DropdownItem key="settings" startContent={<Settings className="w-4.5 h-4.5 text-emerald-500 mr-2" />}>
+                      Settings
+                    </DropdownItem>
+                    
+                    <DropdownItem 
+                      key="logout" 
+                      className="text-red-500 data-[hover=true]:text-red-600 data-[hover=true]:bg-red-50 mt-2 pt-3 border-t border-gray-100 rounded-t-none"
+                      color="danger" 
+                      startContent={<LogOut className="w-4.5 h-4.5 text-red-500 mr-2" />} 
+                      onClick={handleLogout}
+                    >
                       Logout
                     </DropdownItem>
                   </DropdownMenu>
