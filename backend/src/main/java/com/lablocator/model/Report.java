@@ -28,6 +28,12 @@ public class Report {
     @JoinColumn(name = "booking_test_id")
     private BookingTest bookingTest;
 
+    @Column(columnDefinition = "TEXT")
+    private String aiSummary;
+
+    @Column(columnDefinition = "TEXT")
+    private String aiRawResponse;
+
     @ManyToOne
     @JoinColumn(name = "uploaded_by")
     private User uploadedBy;

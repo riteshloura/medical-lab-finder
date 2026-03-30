@@ -28,9 +28,11 @@ import {
   Ban,
   UserX,
   ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
+import ReportAnalysisModal from "../components/ReportAnalysisModal";
 
 // ── Status config — single source of truth ───────────────────────────────────
 
@@ -159,6 +161,7 @@ function ReportSection({ bookingTests }) {
   const [reportMap, setReportMap] = useState({});
   const [loadingIds, setLoadingIds] = useState(new Set());
   const [loaded, setLoaded] = useState(false);
+  const [aiModal, setAiModal] = useState(null); // { reportId, reportName }
 
   useEffect(() => {
     if (loaded || !bookingTests?.length) return;
@@ -186,70 +189,96 @@ function ReportSection({ bookingTests }) {
   if (!bookingTests?.length) return null;
 
   return (
-    <div className="px-5 pb-5">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-        Tests &amp; Reports
-      </p>
-      <div className="space-y-2">
-        {bookingTests.map((bt) => {
-          const reports = reportMap[bt.id] || [];
-          const isLoading = loadingIds.has(bt.id);
+    <>
+      <div className="px-5 pb-5">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+          Tests &amp; Reports
+        </p>
+        <div className="space-y-2">
+          {bookingTests.map((bt) => {
+            const reports = reportMap[bt.id] || [];
+            const isLoading = loadingIds.has(bt.id);
 
-          return (
-            <div
-              key={bt.id}
-              className="flex flex-col sm:flex-row sm:items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100"
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-8 h-8 bg-white border border-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <FlaskConical className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-800 truncate">
-                    {bt.name || `Test #${bt.id}`}
-                  </p>
-                  {bt.labTest?.price != null && (
-                    <p className="text-[11px] text-gray-400 flex items-center gap-0.5 mt-0.5">
-                      <IndianRupee className="w-2.5 h-2.5" />
-                      {bt.price}
+            return (
+              <div key={bt.id} className="flex flex-col gap-2 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                {/* Test name row */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-white border border-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <FlaskConical className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-800 truncate">
+                      {bt.name || `Test #${bt.id}`}
                     </p>
+                    {bt.labTest?.price != null && (
+                      <p className="text-[11px] text-gray-400 flex items-center gap-0.5 mt-0.5">
+                        <IndianRupee className="w-2.5 h-2.5" />
+                        {bt.price}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reports row */}
+                <div className="pl-11">
+                  {isLoading ? (
+                    <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Loading report…
+                    </span>
+                  ) : reports.length === 0 ? (
+                    <span className="text-[11px] text-gray-400 italic bg-white border border-gray-100 px-2.5 py-1 rounded-lg">
+                      Report pending
+                    </span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {reports.map((r, i) => (
+                        <div key={r.id ?? i} className="flex items-center gap-1.5">
+                          {/* Download link */}
+                          <a
+                            href={r.reportURI}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 px-2.5 py-1.5 rounded-lg transition-all"
+                          >
+                            <Download className="w-3 h-3" />
+                            Report {reports.length > 1 ? i + 1 : ""}
+                            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                          </a>
+
+                          {/* AI Analyse button */}
+                          <button
+                            onClick={() =>
+                              setAiModal({
+                                reportId: r.id,
+                                reportName: `${bt.name || "Report"} ${reports.length > 1 ? `#${i + 1}` : ""}`.trim(),
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100 hover:border-violet-300 px-2.5 py-1.5 rounded-lg transition-all"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Analyse with AI
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
-
-              <div className="pl-11 sm:pl-0 flex-shrink-0">
-                {isLoading ? (
-                  <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Loading report…
-                  </span>
-                ) : reports.length === 0 ? (
-                  <span className="text-[11px] text-gray-400 italic bg-white border border-gray-100 px-2.5 py-1 rounded-lg">
-                    Report pending
-                  </span>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {reports.map((r, i) => (
-                      <a
-                        key={r.id ?? i}
-                        href={r.reportURI}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 px-2.5 py-1.5 rounded-lg transition-all"
-                      >
-                        <Download className="w-3 h-3" />
-                        Report {reports.length > 1 ? i + 1 : ""}
-                        <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* AI Analysis modal — mounted inside ReportSection so it's scoped */}
+      {aiModal && (
+        <ReportAnalysisModal
+          reportId={aiModal.reportId}
+          reportName={aiModal.reportName}
+          onClose={() => setAiModal(null)}
+        />
+      )}
+    </>
   );
 }
 

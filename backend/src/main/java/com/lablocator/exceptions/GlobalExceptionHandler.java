@@ -1,5 +1,8 @@
 package com.lablocator.exceptions;
 
+import com.lablocator.service.ai.ReportAnalysisException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,6 +23,8 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // ── Helper: build a consistent error body ────────────────────────────────
 
@@ -123,13 +128,20 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    // ── 502 Bad Gateway (upstream AI service failures) ───────────────────────
+
+    @ExceptionHandler(ReportAnalysisException.class)
+    public ResponseEntity<Map<String, Object>> handleReportAnalysis(ReportAnalysisException ex) {
+        log.warn("AI report analysis failed: {}", ex.getMessage());
+        return respond(HttpStatus.BAD_GATEWAY, ex.getMessage());
+    }
+
     // ── 500 Internal Server Error (unexpected) ────────────────────────────────
 
-    /** Last-resort fallback — logs the stacktrace but sends a safe message to the client */
+    /** Last-resort fallback — logs the stack trace but sends a safe message to the client */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-        // Print to server logs so the team can investigate
-        ex.printStackTrace();
+        log.error("Unhandled exception: {}", ex.getMessage(), ex);
         return respond(HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred. Please try again later.");
     }
