@@ -1,8 +1,9 @@
 import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Avatar } from "@heroui/react";
 import { motion } from "framer-motion";
-import { TestTube2, User, LogOut, Settings, FileText, Bell, Building2 } from "lucide-react";
+import { TestTube2, User, LogOut, Settings, FileText, Building2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -46,11 +47,8 @@ function Navbar() {
           >
             {isAuthenticated ? (
               <>
-                {/* Notification bell */}
-                <button className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/60 flex items-center justify-center hover:bg-white transition-colors relative">
-                  <Bell className="w-4.5 h-4.5 text-gray-600" />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
-                </button>
+                {/* Notification bell — shown only for regular users */}
+                {!isLabOwner && <NotificationBell />}
 
                 {/* User dropdown */}
                 <Dropdown 

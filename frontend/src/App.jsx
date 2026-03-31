@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
+import { NotificationToastLayer } from "./components/NotificationBell";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,24 +17,28 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/lab/:labId" element={<LabDetails />} />
-          <Route path="/my-bookings" element={<MyBookings />} />
-          <Route
-            path="/owner/dashboard"
-            element={
-              <OwnerRoute>
-                <OwnerDashboard />
-              </OwnerRoute>
-            }
-          />
-        </Routes>
+        <NotificationProvider>
+          {/* Global toast layer — rendered outside page scroll context */}
+          <NotificationToastLayer />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/lab/:labId" element={<LabDetails />} />
+            <Route path="/my-bookings" element={<MyBookings />} />
+            <Route
+              path="/owner/dashboard"
+              element={
+                <OwnerRoute>
+                  <OwnerDashboard />
+                </OwnerRoute>
+              }
+            />
+          </Routes>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );
