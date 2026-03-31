@@ -42,6 +42,7 @@ public class SecurityConfig {
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/api/auth/**").permitAll()
+                                                .requestMatchers("/ws/**").permitAll()  // SockJS WebSocket handshake
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/labs/nearby",
                                                                 "/api/labs/search",

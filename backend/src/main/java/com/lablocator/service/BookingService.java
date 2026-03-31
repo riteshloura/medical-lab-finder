@@ -43,6 +43,9 @@ public class BookingService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private NotificationService notificationService;
+
 
     @Transactional
     public Booking createBooking(Long labId, String email, CreateBookingRequest req) {
@@ -363,6 +366,23 @@ public class BookingService {
             log.warn("Email send failed for booking {} to {}: {}", booking.getId(), booking.getUser().getEmail(), ex.getMessage());
         }
 
+        // 🔔 Real-time notification
+        String notifType = "BOOKING_" + newStatus.name();
+        String notifMsg = switch (newStatus) {
+            case CONFIRMED -> "Your booking #" + booking.getId() + " at " + lab.getName() + " has been confirmed.";
+            case COMPLETED -> "Your booking #" + booking.getId() + " at " + lab.getName() + " is now complete. Reports will be uploaded soon.";
+            case CANCELLED -> "Your booking #" + booking.getId() + " at " + lab.getName() + " was cancelled by the lab.";
+            default -> "Your booking #" + booking.getId() + " status was updated to " + newStatus + ".";
+        };
+        notificationService.createAndSend(
+                booking.getUser().getId(),
+                booking.getUser().getEmail(),   // STOMP principal name = email
+                notifType,
+                notifMsg,
+                booking.getId(),
+                newStatus.name()
+        );
+
         return new BookingStatusUpdateResult(booking, emailSent);
     }
 
@@ -411,7 +431,19 @@ public class BookingService {
         );
         labRepo.save(lab);
 
-        return bookingRepo.save(booking);
+        Object saved = bookingRepo.save(booking);
+
+        // 🔔 Notify user of their own cancellation confirmation
+        notificationService.createAndSend(
+                user.getId(),
+                user.getEmail(),                // STOMP principal name = email
+                "BOOKING_CANCELLED",
+                "Your booking #" + booking.getId() + " at " + lab.getName() + " has been cancelled.",
+                booking.getId(),
+                "CANCELLED"
+        );
+
+        return saved;
     }
 
 }
