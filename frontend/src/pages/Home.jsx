@@ -6,7 +6,6 @@ import {
   Building2,
   Phone,
   Navigation,
-  Shield,
   X,
   Layers,
   ChevronRight,
@@ -19,6 +18,10 @@ import {
   Download,
   ExternalLink,
   Star,
+  ArrowUpRight,
+  SortAsc,
+  Filter,
+  Zap,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -60,28 +63,40 @@ const BOOKING_STATUS_CONFIG = {
   },
 };
 
+// ── Lab sort/filter options ──────────────────────────────────────────────────
+const LAB_SORT_OPTIONS = [
+  { key: "default", label: "Default", icon: "🗺️" },
+  { key: "open", label: "Open Now", icon: "🟢" },
+  { key: "rating", label: "Top Rated", icon: "⭐" },
+  { key: "distance", label: "Nearest", icon: "📍" },
+];
+
 const isLabOpen = (openingTime, closingTime) => {
   if (!openingTime || !closingTime) return false;
   try {
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
-
     const parseTime = (t) => {
       if (Array.isArray(t)) return t[0] * 60 + (t[1] || 0);
       const [h, m] = t.split(":").map(Number);
       return h * 60 + m;
     };
-
     const openMins = parseTime(openingTime);
     const closeMins = parseTime(closingTime);
-
-    if (closeMins < openMins) {
-      return currentMins >= openMins || currentMins <= closeMins;
-    }
+    if (closeMins < openMins) return currentMins >= openMins || currentMins <= closeMins;
     return currentMins >= openMins && currentMins <= closeMins;
   } catch (e) {
     return false;
   }
+};
+
+const formatTime = (time) => {
+  if (!time) return "—";
+  const [hour, minute] = time.split(":");
+  const h = Number(hour);
+  const formattedHour = h % 12 || 12;
+  const ampm = h >= 12 ? "PM" : "AM";
+  return `${formattedHour}:${minute} ${ampm}`;
 };
 
 function Home() {
@@ -96,31 +111,31 @@ function Home() {
   const [searchLocation, setSearchLocation] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSearchOpen, setIsSearchOpen] = useState(true); // desktop: open; collapses to icon on click
+  const [isSearchOpen, setIsSearchOpen] = useState(true);
   const [selectedLab, setSelectedLab] = useState(null);
   const [activeFilter, setActiveFilter] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
 
-  // sidebar tab: "labs" | "bookings"
+  // sidebar tab
   const [sidebarTab, setSidebarTab] = useState("labs");
+
+  // ── Labs local search + sort ─────────────────────────────────────────────
+  const [labSearch, setLabSearch] = useState("");
+  const [labSort, setLabSort] = useState("default");
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   // bookings state
   const [recentBookings, setRecentBookings] = useState([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
 
-  // ── Detect mobile (< 768px) ──────────────────────────────────────────────
+  // ── Detect mobile ────────────────────────────────────────────────────────
   useEffect(() => {
     const check = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setIsSearchOpen(false);
-        setIsSidebarOpen(false);
-      } else {
-        setIsSearchOpen(true);
-        setIsSidebarOpen(true);
-      }
+      if (mobile) { setIsSearchOpen(false); setIsSidebarOpen(false); }
+      else { setIsSearchOpen(true); setIsSidebarOpen(true); }
     };
     check();
     window.addEventListener("resize", check);
@@ -131,11 +146,8 @@ function Home() {
   const getNearbyLabs = async (lat, lng) => {
     try {
       setIsLoadingLabs(true);
-      const response = await api.get(
-        `/labs/nearby?lat=${lat}&lng=${lng}&radius=50`,
-      );
+      const response = await api.get(`/labs/nearby?lat=${lat}&lng=${lng}&radius=50`);
       setNearbyLabs(response.data);
-      console.log("Nearby Labs:", response.data);
     } catch {
       setLocationError("Failed to fetch nearby labs");
     } finally {
@@ -169,12 +181,8 @@ function Home() {
     try {
       setIsSearching(true);
       setLocationError("");
-      const response = await api.get(
-        `/labs/search?test=${searchTest}&&location=${searchLocation}`,
-      );
+      const response = await api.get(`/labs/search?test=${searchTest}&&location=${searchLocation}`);
       setNearbyLabs(response.data);
-      console.log("Search Results:", response.data);
-      // On mobile, close search after searching to reveal map
       if (isMobile) setIsSearchOpen(false);
     } catch {
       setLocationError("Failed to search labs. Please try again.");
@@ -190,10 +198,7 @@ function Home() {
 
   const fetchRecentBookings = async () => {
     if (!isAuthenticated) return;
-    if (user.role === "LAB_OWNER") {
-      navigate("/owner/dashboard");
-      return;
-    }
+    if (user.role === "LAB_OWNER") { navigate("/owner/dashboard"); return; }
     try {
       setIsLoadingBookings(true);
       setBookingsError("");
@@ -207,20 +212,12 @@ function Home() {
   };
 
   const handleBookingsTab = () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-    if (user.role === "LAB_OWNER") {
-      navigate("/owner/dashboard");
-      return;
-    }
+    if (!isAuthenticated) { navigate("/login"); return; }
+    if (user.role === "LAB_OWNER") { navigate("/owner/dashboard"); return; }
     setSidebarTab("bookings");
     setIsSidebarOpen(true);
-    // On mobile, close search when opening sidebar
     if (isMobile) setIsSearchOpen(false);
-    if (recentBookings.length === 0 && !isLoadingBookings)
-      fetchRecentBookings();
+    if (recentBookings.length === 0 && !isLoadingBookings) fetchRecentBookings();
   };
 
   const handleLabsTab = () => {
@@ -232,15 +229,40 @@ function Home() {
   const handleSearchToggle = () => {
     const next = !isSearchOpen;
     setIsSearchOpen(next);
-    // On mobile, close sidebar when opening search
     if (isMobile && next) setIsSidebarOpen(false);
   };
 
-  useEffect(() => {
-    getUserLocation();
-  }, []);
+  useEffect(() => { getUserLocation(); }, []);
 
-  // ── Sidebar width: narrower on small screens ─────────────────────────────
+  // ── Derived: filtered + sorted labs list ────────────────────────────────
+  const displayedLabs = (() => {
+    let list = [...nearbyLabs];
+
+    // 1. local text search
+    if (labSearch.trim()) {
+      const q = labSearch.toLowerCase();
+      list = list.filter(
+        (lab) =>
+          lab.name?.toLowerCase().includes(q) ||
+          lab.address?.toLowerCase().includes(q) ||
+          lab.city?.toLowerCase().includes(q) ||
+          lab.labTests?.some((t) => t.name?.toLowerCase().includes(q))
+      );
+    }
+
+    // 2. sort
+    if (labSort === "open") {
+      list = list.filter((lab) => isLabOpen(lab.openingTime, lab.closingTime));
+    } else if (labSort === "rating") {
+      list = [...list].sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
+    } else if (labSort === "distance") {
+      list = [...list].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    }
+
+    return list;
+  })();
+
+  // ── Sidebar sizing ───────────────────────────────────────────────────────
   const sidebarWidth = isMobile ? "calc(100vw - 24px)" : "380px";
   const sidebarRight = isMobile ? "12px" : "20px";
   const sidebarTop = isMobile ? "76px" : "88px";
@@ -261,20 +283,16 @@ function Home() {
           />
         </div>
 
-        {/* ── Search Toggle Button (always visible top-left) ── */}
+        {/* ── Search Toggle Button ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, delay: 0.1 }}
           className="absolute z-40"
-          style={{
-            top: isMobile ? "76px" : "80px",
-            left: isMobile ? "12px" : "20px",
-          }}
+          style={{ top: isMobile ? "76px" : "80px", left: isMobile ? "12px" : "20px" }}
         >
           <AnimatePresence mode="wait">
             {!isSearchOpen ? (
-              /* ── Collapsed: floating icon pill ── */
               <motion.button
                 key="search-icon"
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -288,7 +306,6 @@ function Home() {
                 <Search className="w-5 h-5 text-gray-500 group-hover:text-emerald-600 transition-colors" />
               </motion.button>
             ) : (
-              /* ── Expanded: full search panel ── */
               <motion.div
                 key="search-panel"
                 initial={{ opacity: 0, y: -10, scale: 0.97 }}
@@ -298,11 +315,8 @@ function Home() {
                 className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
                 style={{ width: isMobile ? "calc(100vw - 24px)" : "360px" }}
               >
-                {/* Panel header row */}
                 <div className="flex items-center justify-between px-3 pt-3 pb-1">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Find Labs
-                  </span>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Find Labs</span>
                   <button
                     onClick={handleSearchToggle}
                     className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
@@ -311,7 +325,6 @@ function Home() {
                   </button>
                 </div>
 
-                {/* Inputs */}
                 <div className="px-3 pb-2 space-y-2">
                   <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 h-11 border border-transparent focus-within:border-emerald-400 focus-within:bg-white transition-all">
                     <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -351,25 +364,16 @@ function Home() {
                     className="w-full h-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm shadow-emerald-500/30"
                   >
                     {isSearching ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Searching…
-                      </>
+                      <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Searching…</>
                     ) : (
-                      <>
-                        <Search className="w-4 h-4" />
-                        Search Labs
-                      </>
+                      <><Search className="w-4 h-4" />Search Labs</>
                     )}
                   </button>
                 </div>
 
-                {/* Quick filters */}
                 <div className="px-3 pb-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Popular
-                    </span>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Popular</span>
                     <div className="flex-1 h-px bg-gray-100" />
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -377,11 +381,10 @@ function Home() {
                       <button
                         key={tag}
                         onClick={() => handleQuickFilter(tag)}
-                        className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${
-                          activeFilter === tag
+                        className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${activeFilter === tag
                             ? "bg-emerald-500 border-emerald-500 text-white"
                             : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600"
-                        }`}
+                          }`}
                       >
                         {tag}
                       </button>
@@ -393,26 +396,21 @@ function Home() {
           </AnimatePresence>
         </motion.div>
 
-        {/* ── Tab Pills (Top-Right) ── */}
+        {/* ── Tab Pills (Top-Right) when sidebar is closed ── */}
         {!isSidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
             className="absolute z-30 flex items-center gap-1 bg-white rounded-xl shadow-lg border border-gray-100 p-1"
-            style={{
-              top: isMobile ? "76px" : "80px",
-              right: isMobile ? "12px" : "20px",
-            }}
+            style={{ top: isMobile ? "76px" : "80px", right: isMobile ? "12px" : "20px" }}
           >
-            {/* Labs tab */}
             <button
               onClick={handleLabsTab}
-              className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all ${
-                isSidebarOpen && sidebarTab === "labs"
+              className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all ${isSidebarOpen && sidebarTab === "labs"
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-              }`}
+                }`}
             >
               <Building2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{nearbyLabs.length} </span>Labs
@@ -420,55 +418,31 @@ function Home() {
 
             <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
 
-            {/* Bookings tab */}
             <button
               onClick={handleBookingsTab}
-              className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all relative ${
-                isSidebarOpen && sidebarTab === "bookings"
+              className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all relative ${isSidebarOpen && sidebarTab === "bookings"
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-              }`}
+                }`}
             >
               <CalendarDays className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">
                 {isAuthenticated
-                  ? isLoadingBookings
-                    ? "…"
-                    : `${recentBookings.length > 0 ? recentBookings.length + " " : ""}Bookings`
+                  ? isLoadingBookings ? "…" : `${recentBookings.length > 0 ? recentBookings.length + " " : ""}Bookings`
                   : "Bookings"}
               </span>
               <span className="sm:hidden">
-                {isAuthenticated &&
-                !isLoadingBookings &&
-                recentBookings.length > 0
-                  ? recentBookings.length
-                  : "Book"}
+                {isAuthenticated && !isLoadingBookings && recentBookings.length > 0
+                  ? recentBookings.length : "Book"}
               </span>
               {isAuthenticated &&
                 !(isSidebarOpen && sidebarTab === "bookings") &&
-                recentBookings.filter((b) => b.status === "PENDING").length >
-                  0 && (
+                recentBookings.filter((b) => b.status === "PENDING").length > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white">
-                    {
-                      recentBookings.filter((b) => b.status === "PENDING")
-                        .length
-                    }
+                    {recentBookings.filter((b) => b.status === "PENDING").length}
                   </span>
                 )}
             </button>
-
-            {/* Close — only when sidebar is open */}
-            {isSidebarOpen && (
-              <>
-                <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </>
-            )}
           </motion.div>
         )}
 
@@ -485,26 +459,21 @@ function Home() {
                 <Building2 className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-xl font-bold text-gray-900 leading-none">
-                  {nearbyLabs.length}
-                </p>
+                <p className="text-xl font-bold text-gray-900 leading-none">{nearbyLabs.length}</p>
                 <p className="text-[11px] text-gray-500 mt-0.5">Labs found</p>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* ── Map Controls (Bottom-Right) — desktop only, shift left when sidebar open ── */}
+        {/* ── Map Controls (Bottom-Right) — desktop only ── */}
         {!isMobile && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="absolute bottom-6 z-30 flex flex-col gap-2"
-            style={{
-              right: isSidebarOpen ? "405px" : "20px",
-              transition: "right 0.3s ease",
-            }}
+            style={{ right: isSidebarOpen ? "405px" : "20px", transition: "right 0.3s ease" }}
           >
             <button className="w-10 h-10 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition-colors">
               <Layers className="w-4.5 h-4.5 text-gray-600" />
@@ -519,7 +488,7 @@ function Home() {
           </motion.div>
         )}
 
-        {/* ── Mobile: Location button (bottom-center) ── */}
+        {/* ── Mobile: Location button ── */}
         {isMobile && (
           <motion.button
             initial={{ opacity: 0, y: 16 }}
@@ -542,23 +511,17 @@ function Home() {
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ type: "spring", damping: 30, stiffness: 280 }}
               className="absolute z-20 flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-              style={{
-                top: sidebarTop,
-                right: sidebarRight,
-                width: sidebarWidth,
-                height: sidebarHeight,
-              }}
+              style={{ top: sidebarTop, right: sidebarRight, width: sidebarWidth, height: sidebarHeight }}
             >
-              {/* Sidebar header */}
+              {/* ── Sidebar header ── */}
               <div className="px-5 pt-4 pb-0 border-b border-gray-100 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-center">
-                      {sidebarTab === "labs" ? (
-                        <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <CalendarDays className="w-3.5 h-3.5 text-emerald-600" />
-                      )}
+                      {sidebarTab === "labs"
+                        ? <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                        : <CalendarDays className="w-3.5 h-3.5 text-emerald-600" />
+                      }
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-900 leading-tight">
@@ -566,37 +529,93 @@ function Home() {
                       </p>
                       <p className="text-[11px] text-gray-400 leading-none mt-0.5">
                         {sidebarTab === "labs"
-                          ? isLoadingLabs || isSearching
-                            ? "Fetching…"
-                            : `${nearbyLabs.length} near you`
-                          : isLoadingBookings
-                            ? "Fetching…"
-                            : `${recentBookings.length} recent`}
+                          ? isLoadingLabs || isSearching ? "Fetching…"
+                            : labSearch.trim()
+                              ? `${displayedLabs.length} of ${nearbyLabs.length} labs`
+                              : `${nearbyLabs.length} near you`
+                          : isLoadingBookings ? "Fetching…"
+                            : `${recentBookings.length} recent`
+                        }
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {/* ── Labs tab header actions ── */}
                     {sidebarTab === "labs" && (
-                      <button
-                        className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                        title="Filter"
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-gray-600" />
-                      </button>
+                      <>
+                        {/* Sort menu trigger */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowSortMenu((v) => !v)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${labSort !== "default"
+                                ? "bg-emerald-100 text-emerald-600"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                            title="Sort & filter"
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                          </button>
+
+                          <AnimatePresence>
+                            {showSortMenu && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.92, y: -6 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.92, y: -6 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute right-0 top-10 z-50 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden w-40"
+                              >
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pt-2.5 pb-1.5">
+                                  Sort by
+                                </p>
+                                {LAB_SORT_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.key}
+                                    onClick={() => { setLabSort(opt.key); setShowSortMenu(false); }}
+                                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left ${labSort === opt.key
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "text-gray-600 hover:bg-gray-50"
+                                      }`}
+                                  >
+                                    <span>{opt.icon}</span>
+                                    {opt.label}
+                                    {labSort === opt.key && (
+                                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    )}
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </>
                     )}
+
+                    {/* ── Bookings tab: view all link ── */}
                     {sidebarTab === "bookings" && (
-                      <button
-                        onClick={fetchRecentBookings}
-                        disabled={isLoadingBookings}
-                        className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-40"
-                        title="Refresh"
-                      >
-                        <Loader2
-                          className={`w-3.5 h-3.5 text-gray-600 ${isLoadingBookings ? "animate-spin" : ""}`}
-                        />
-                      </button>
+                      <>
+                        <button
+                          onClick={fetchRecentBookings}
+                          disabled={isLoadingBookings}
+                          className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-40"
+                          title="Refresh"
+                        >
+                          <Loader2 className={`w-3.5 h-3.5 text-gray-600 ${isLoadingBookings ? "animate-spin" : ""}`} />
+                        </button>
+
+                        {/* View all bookings button */}
+                        <Link
+                          to="/my-bookings"
+                          className="flex items-center gap-1 h-8 px-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold hover:bg-emerald-100 hover:border-emerald-300 transition-all"
+                          title="View all bookings"
+                        >
+                          View all
+                          <ArrowUpRight className="w-3 h-3" />
+                        </Link>
+                      </>
                     )}
+
                     <button
                       onClick={() => setIsSidebarOpen(false)}
                       className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
@@ -610,17 +629,14 @@ function Home() {
                 <div className="flex -mb-px">
                   <button
                     onClick={() => setSidebarTab("labs")}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
-                      sidebarTab === "labs"
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${sidebarTab === "labs"
                         ? "border-emerald-500 text-emerald-600"
                         : "border-transparent text-gray-400 hover:text-gray-600"
-                    }`}
+                      }`}
                   >
                     <Building2 className="w-3.5 h-3.5" />
                     Labs
-                    <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sidebarTab === "labs" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
-                    >
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sidebarTab === "labs" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
                       {nearbyLabs.length}
                     </span>
                   </button>
@@ -628,35 +644,93 @@ function Home() {
                   <button
                     onClick={() => {
                       setSidebarTab("bookings");
-                      if (recentBookings.length === 0 && !isLoadingBookings)
-                        fetchRecentBookings();
+                      if (recentBookings.length === 0 && !isLoadingBookings) fetchRecentBookings();
                     }}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${
-                      sidebarTab === "bookings"
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${sidebarTab === "bookings"
                         ? "border-emerald-500 text-emerald-600"
                         : "border-transparent text-gray-400 hover:text-gray-600"
-                    }`}
+                      }`}
                   >
                     <CalendarDays className="w-3.5 h-3.5" />
                     Bookings
                     {recentBookings.length > 0 && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sidebarTab === "bookings" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
-                      >
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${sidebarTab === "bookings" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
                         {recentBookings.length}
                       </span>
                     )}
-                    {recentBookings.filter((b) => b.status === "PENDING")
-                      .length > 0 && (
+                    {recentBookings.filter((b) => b.status === "PENDING").length > 0 && (
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Tab content */}
+              {/* ── Lab search bar (only on labs tab) ── */}
+              <AnimatePresence>
+                {sidebarTab === "labs" && !isLoadingLabs && !locationError && nearbyLabs.length > 0 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="px-4 pt-3 pb-2 border-b border-gray-50 flex-shrink-0 overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* Search input */}
+                      <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 h-9 focus-within:border-emerald-400 focus-within:bg-white transition-all">
+                        <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <input
+                          className="flex-1 text-xs bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
+                          placeholder="Search lab, test or area…"
+                          value={labSearch}
+                          onChange={(e) => setLabSearch(e.target.value)}
+                        />
+                        {labSearch && (
+                          <button onClick={() => setLabSearch("")}>
+                            <X className="w-3 h-3 text-gray-400 hover:text-gray-600" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Active sort indicator pill */}
+                      {labSort !== "default" && (
+                        <motion.button
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          onClick={() => setLabSort("default")}
+                          className="flex items-center gap-1 h-9 px-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold whitespace-nowrap hover:bg-emerald-100 transition-colors flex-shrink-0"
+                        >
+                          {LAB_SORT_OPTIONS.find((o) => o.key === labSort)?.icon}
+                          {LAB_SORT_OPTIONS.find((o) => o.key === labSort)?.label}
+                          <X className="w-2.5 h-2.5 ml-0.5 opacity-60" />
+                        </motion.button>
+                      )}
+                    </div>
+
+                    {/* Quick sort pills row */}
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {LAB_SORT_OPTIONS.filter((o) => o.key !== "default").map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setLabSort(labSort === opt.key ? "default" : opt.key)}
+                          className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all ${labSort === opt.key
+                              ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                              : "bg-white border-gray-200 text-gray-500 hover:border-emerald-300 hover:text-emerald-600"
+                            }`}
+                        >
+                          <span className="text-[10px]">{opt.icon}</span>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* ── Tab content ── */}
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 <AnimatePresence mode="wait">
+
                   {/* ── LABS TAB ── */}
                   {sidebarTab === "labs" && (
                     <motion.div
@@ -669,10 +743,7 @@ function Home() {
                     >
                       {(isLoadingLabs || isSearching) &&
                         [1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className="rounded-2xl border border-gray-100 p-4 space-y-2.5"
-                          >
+                          <div key={i} className="rounded-2xl border border-gray-100 p-4 space-y-2.5">
                             <div className="flex items-center gap-3">
                               <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
                               <div className="flex-1 space-y-1.5">
@@ -690,12 +761,8 @@ function Home() {
                           <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-4">
                             <MapPin className="w-7 h-7 text-orange-400" />
                           </div>
-                          <h3 className="text-sm font-bold text-gray-800 mb-1">
-                            Location needed
-                          </h3>
-                          <p className="text-xs text-gray-500 mb-5 max-w-[220px]">
-                            {locationError}
-                          </p>
+                          <h3 className="text-sm font-bold text-gray-800 mb-1">Location needed</h3>
+                          <p className="text-xs text-gray-500 mb-5 max-w-[220px]">{locationError}</p>
                           <button
                             onClick={getUserLocation}
                             className="flex items-center gap-2 bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm hover:bg-emerald-600 transition-colors"
@@ -705,61 +772,66 @@ function Home() {
                         </div>
                       )}
 
-                      {!isLoadingLabs &&
-                        !isSearching &&
-                        !locationError &&
-                        nearbyLabs.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
-                              <Building2 className="w-7 h-7 text-gray-300" />
-                            </div>
-                            <h3 className="text-sm font-bold text-gray-700 mb-1">
-                              No labs found
-                            </h3>
-                            <p className="text-xs text-gray-400">
-                              Try a different test or location
-                            </p>
+                      {!isLoadingLabs && !isSearching && !locationError && nearbyLabs.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
+                            <Building2 className="w-7 h-7 text-gray-300" />
                           </div>
+                          <h3 className="text-sm font-bold text-gray-700 mb-1">No labs found</h3>
+                          <p className="text-xs text-gray-400">Try a different test or location</p>
+                        </div>
+                      )}
+
+                      {/* ── No results after local search/filter ── */}
+                      {!isLoadingLabs && !isSearching && !locationError &&
+                        nearbyLabs.length > 0 && displayedLabs.length === 0 && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex flex-col items-center justify-center py-12 text-center"
+                          >
+                            <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mb-3">
+                              <Search className="w-6 h-6 text-gray-300" />
+                            </div>
+                            <p className="text-sm font-bold text-gray-600 mb-1">No matches found</p>
+                            <p className="text-xs text-gray-400 mb-3">
+                              {labSort === "open"
+                                ? "No labs are currently open"
+                                : `No labs match "${labSearch}"`}
+                            </p>
+                            <button
+                              onClick={() => { setLabSearch(""); setLabSort("default"); }}
+                              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 underline underline-offset-2"
+                            >
+                              Clear filters
+                            </button>
+                          </motion.div>
                         )}
 
-                      {!isLoadingLabs &&
-                        !isSearching &&
-                        !locationError &&
-                        nearbyLabs.map((lab, idx) => (
+                      {!isLoadingLabs && !isSearching && !locationError &&
+                        displayedLabs.map((lab, idx) => (
                           <motion.div
                             key={lab.id}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.04 }}
                             onClick={() => setSelectedLab(lab)}
-                            className={`rounded-2xl border cursor-pointer transition-all duration-200 ${
-                              selectedLab?.id === lab.id
+                            className={`rounded-2xl border cursor-pointer transition-all duration-200 ${selectedLab?.id === lab.id
                                 ? "border-emerald-400 bg-emerald-50/60 shadow-md"
                                 : "border-gray-100 bg-white hover:border-emerald-200 hover:shadow-sm"
-                            }`}
+                              }`}
                           >
                             <div className="p-4">
                               <div className="flex items-start gap-3 mb-3">
-                                <div
-                                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedLab?.id === lab.id ? "bg-emerald-500" : "bg-gray-100"}`}
-                                >
-                                  <Building2
-                                    className={`w-5 h-5 ${selectedLab?.id === lab.id ? "text-white" : "text-gray-500"}`}
-                                  />
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedLab?.id === lab.id ? "bg-emerald-500" : "bg-gray-100"}`}>
+                                  <Building2 className={`w-5 h-5 ${selectedLab?.id === lab.id ? "text-white" : "text-gray-500"}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">
-                                    {lab.name}
-                                  </h3>
-                                  <p className="text-xs text-gray-400 mt-0.5">
-                                    {lab.city}
-                                  </p>
+                                  <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">{lab.name}</h3>
+                                  <p className="text-xs text-gray-400 mt-0.5">{lab.city}</p>
                                 </div>
                                 <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
-                                  {isLabOpen(
-                                    lab.openingTime,
-                                    lab.closingTime,
-                                  ) ? (
+                                  {isLabOpen(lab.openingTime, lab.closingTime) ? (
                                     <div className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
                                       <Clock className="w-3 h-3" /> Open
                                     </div>
@@ -770,24 +842,14 @@ function Home() {
                                   )}
                                   <div className="flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
                                     <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                                    {lab.avgRating
-                                      ? lab.avgRating.toFixed(1)
-                                      : "New"}
-                                    {lab.totalReviews ? (
-                                      <span className="text-gray-400 font-normal">
-                                        ({lab.totalReviews})
-                                      </span>
-                                    ) : (
-                                      ""
-                                    )}
+                                    {lab.avgRating ? lab.avgRating.toFixed(1) : "New"}
+                                    {lab.totalReviews ? <span className="text-gray-400 font-normal">({lab.totalReviews})</span> : ""}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-start gap-2 mb-2.5">
                                 <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                                  {lab.address}
-                                </p>
+                                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{lab.address}</p>
                               </div>
                               <div className="flex items-center gap-3 mb-3">
                                 {lab.contactNumber && (
@@ -799,9 +861,7 @@ function Home() {
                                 {lab.slotCapacityOnline > 0 && (
                                   <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
                                     <Clock className="w-3 h-3" />
-                                    <span>
-                                      {lab.slotCapacityOnline} slots open
-                                    </span>
+                                    <span>{lab.slotCapacityOnline} slots open</span>
                                   </div>
                                 )}
                                 {lab.distance != null && (
@@ -811,13 +871,9 @@ function Home() {
                                   </div>
                                 )}
                               </div>
-                              <Link
-                                to={`/lab/${lab.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <Link to={`/lab/${lab.id}`} onClick={(e) => e.stopPropagation()}>
                                 <div className="w-full h-8 rounded-xl bg-gray-900 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
-                                  View details{" "}
-                                  <ChevronRight className="w-3.5 h-3.5" />
+                                  View details <ChevronRight className="w-3.5 h-3.5" />
                                 </div>
                               </Link>
                             </div>
@@ -836,81 +892,55 @@ function Home() {
                       transition={{ duration: 0.15 }}
                       className="space-y-2"
                     >
-                      {isLoadingBookings &&
-                        [1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="rounded-2xl border border-gray-100 p-4 space-y-2.5"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="w-9 h-9 rounded-xl flex-shrink-0" />
-                              <div className="flex-1 space-y-1.5">
-                                <Skeleton className="w-2/3 h-4 rounded-lg" />
-                                <Skeleton className="w-1/3 h-3 rounded-lg" />
-                              </div>
-                              <Skeleton className="w-16 h-5 rounded-full flex-shrink-0" />
+                      {isLoadingBookings && [1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-2xl border border-gray-100 p-4 space-y-2.5">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="w-9 h-9 rounded-xl flex-shrink-0" />
+                            <div className="flex-1 space-y-1.5">
+                              <Skeleton className="w-2/3 h-4 rounded-lg" />
+                              <Skeleton className="w-1/3 h-3 rounded-lg" />
                             </div>
-                            <Skeleton className="w-full h-3 rounded-lg" />
-                            <Skeleton className="w-1/2 h-3 rounded-lg" />
+                            <Skeleton className="w-16 h-5 rounded-full flex-shrink-0" />
                           </div>
-                        ))}
+                          <Skeleton className="w-full h-3 rounded-lg" />
+                          <Skeleton className="w-1/2 h-3 rounded-lg" />
+                        </div>
+                      ))}
 
                       {!isLoadingBookings && bookingsError && (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                           <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-3">
                             <CalendarDays className="w-6 h-6 text-red-400" />
                           </div>
-                          <p className="text-sm font-bold text-gray-700 mb-1">
-                            Couldn't load bookings
-                          </p>
-                          <p className="text-xs text-gray-400 mb-4">
-                            {bookingsError}
-                          </p>
-                          <button
-                            onClick={fetchRecentBookings}
-                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
-                          >
+                          <p className="text-sm font-bold text-gray-700 mb-1">Couldn't load bookings</p>
+                          <p className="text-xs text-gray-400 mb-4">{bookingsError}</p>
+                          <button onClick={fetchRecentBookings} className="text-xs font-bold text-emerald-600 hover:text-emerald-700">
                             Try again
                           </button>
                         </div>
                       )}
 
-                      {!isLoadingBookings &&
-                        !bookingsError &&
-                        recentBookings.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="w-14 h-14 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center mb-4">
-                              <CalendarDays className="w-7 h-7 text-emerald-400" />
-                            </div>
-                            <h3 className="text-sm font-bold text-gray-700 mb-1">
-                              No bookings yet
-                            </h3>
-                            <p className="text-xs text-gray-400 mb-4 max-w-[180px]">
-                              Find a lab and book your first test
-                            </p>
-                            <button
-                              onClick={() => setSidebarTab("labs")}
-                              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                            >
-                              <Building2 className="w-3.5 h-3.5" /> Browse labs
-                            </button>
+                      {!isLoadingBookings && !bookingsError && recentBookings.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                          <div className="w-14 h-14 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center mb-4">
+                            <CalendarDays className="w-7 h-7 text-emerald-400" />
                           </div>
-                        )}
+                          <h3 className="text-sm font-bold text-gray-700 mb-1">No bookings yet</h3>
+                          <p className="text-xs text-gray-400 mb-4 max-w-[180px]">Find a lab and book your first test</p>
+                          <button
+                            onClick={() => setSidebarTab("labs")}
+                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                          >
+                            <Building2 className="w-3.5 h-3.5" /> Browse labs
+                          </button>
+                        </div>
+                      )}
 
-                      {!isLoadingBookings &&
-                        !bookingsError &&
+                      {!isLoadingBookings && !bookingsError &&
                         recentBookings.map((booking, idx) => {
-                          const cfg =
-                            BOOKING_STATUS_CONFIG[booking.status] || {};
-                          const totalPrice =
-                            booking.bookingTests?.reduce(
-                              (sum, bt) => sum + (bt.price ?? 0),
-                              0,
-                            ) ?? 0;
-                          const testNames =
-                            booking.bookingTests
-                              ?.map((bt) => bt.name)
-                              .filter(Boolean) ?? [];
+                          const cfg = BOOKING_STATUS_CONFIG[booking.status] || {};
+                          const totalPrice = booking.bookingTests?.reduce((sum, bt) => sum + (bt.price ?? 0), 0) ?? 0;
+                          const testNames = booking.bookingTests?.map((bt) => bt.name).filter(Boolean) ?? [];
                           return (
                             <motion.div
                               key={booking.id}
@@ -920,35 +950,21 @@ function Home() {
                               className="rounded-2xl border border-gray-100 bg-white overflow-hidden hover:shadow-sm transition-shadow"
                             >
                               <div className="flex min-w-0">
-                                <div
-                                  className="w-1 rounded-l-2xl flex-shrink-0"
-                                  style={{ background: cfg.dot || "#e5e7eb" }}
-                                />
+                                <div className="w-1 rounded-l-2xl flex-shrink-0" style={{ background: cfg.dot || "#e5e7eb" }} />
                                 <div className="flex-1 min-w-0 p-4">
                                   <div className="flex items-start gap-3 mb-2.5">
                                     <div className="w-9 h-9 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0">
                                       <Building2 className="w-4 h-4 text-emerald-600" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-bold text-gray-900 truncate leading-tight">
-                                        {booking.lab?.name || "Lab"}
-                                      </p>
-                                      <p className="text-[11px] text-gray-400 mt-0.5">
-                                        #{booking.id}
-                                      </p>
+                                      <p className="text-sm font-bold text-gray-900 truncate leading-tight">{booking.lab?.name || "Lab"}</p>
+                                      <p className="text-[11px] text-gray-400 mt-0.5">#{booking.id}</p>
                                     </div>
                                     <span
                                       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border flex-shrink-0"
-                                      style={{
-                                        color: cfg.color,
-                                        background: cfg.bg,
-                                        borderColor: cfg.border,
-                                      }}
+                                      style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.border }}
                                     >
-                                      <span
-                                        className="w-1.5 h-1.5 rounded-full"
-                                        style={{ background: cfg.dot }}
-                                      />
+                                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
                                       {cfg.label || booking.status}
                                     </span>
                                   </div>
@@ -957,7 +973,7 @@ function Home() {
                                     {booking.timeSlot && (
                                       <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
                                         <Clock className="w-3 h-3 text-gray-400" />
-                                        {booking.timeSlot}
+                                        {formatTime(booking.timeSlot)}
                                       </div>
                                     )}
                                     {totalPrice > 0 && (
@@ -971,10 +987,7 @@ function Home() {
                                   {testNames.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mb-3">
                                       {testNames.map((name, i) => (
-                                        <span
-                                          key={i}
-                                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full"
-                                        >
+                                        <span key={i} className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
                                           <FlaskConical className="w-2.5 h-2.5 text-gray-400" />
                                           {name}
                                         </span>
@@ -983,9 +996,7 @@ function Home() {
                                   )}
 
                                   {booking.status === "COMPLETED" && (
-                                    <BookingReportLinks
-                                      bookingTests={booking.bookingTests}
-                                    />
+                                    <BookingReportLinks bookingTests={booking.bookingTests} />
                                   )}
 
                                   <div className="pt-2.5 border-t border-gray-50 flex items-center justify-between">
@@ -993,16 +1004,14 @@ function Home() {
                                       to="/my-bookings"
                                       className="text-[11px] font-bold text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
                                     >
-                                      <CalendarDays className="w-3 h-3" />{" "}
-                                      Details
+                                      <CalendarDays className="w-3 h-3" /> Details
                                     </Link>
                                     {booking.lab?.id && (
                                       <Link
                                         to={`/lab/${booking.lab.id}`}
                                         className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition-colors"
                                       >
-                                        Book again{" "}
-                                        <ChevronRight className="w-3 h-3" />
+                                        Book again <ChevronRight className="w-3 h-3" />
                                       </Link>
                                     )}
                                   </div>
@@ -1012,18 +1021,16 @@ function Home() {
                           );
                         })}
 
-                      {!isLoadingBookings &&
-                        !bookingsError &&
-                        recentBookings.length > 0 && (
-                          <Link
-                            to="/my-bookings"
-                            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 text-xs font-bold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 transition-all"
-                          >
-                            <CalendarDays className="w-3.5 h-3.5" />
-                            View all bookings
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </Link>
-                        )}
+                      {!isLoadingBookings && !bookingsError && recentBookings.length > 0 && (
+                        <Link
+                          to="/my-bookings"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 text-xs font-bold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 transition-all"
+                        >
+                          <CalendarDays className="w-3.5 h-3.5" />
+                          View all bookings
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1072,11 +1079,7 @@ function BookingReportLinks({ bookingTests }) {
     );
 
   if (allReports.length === 0)
-    return (
-      <div className="text-[11px] text-gray-400 italic mb-2.5">
-        No reports yet
-      </div>
-    );
+    return <div className="text-[11px] text-gray-400 italic mb-2.5">No reports yet</div>;
 
   return (
     <div className="flex flex-wrap gap-1.5 mb-2.5">

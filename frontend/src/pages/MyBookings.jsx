@@ -369,7 +369,8 @@ function BookingCard({
           </div>
 
           {/* ── Info strip — always visible ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-5 pb-4 border-b border-gray-50">
+          {/* ── Info strip — always visible ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-5 pb-4 border-b border-gray-50">
             <InfoChip
               icon={Clock3}
               label="Slot"
@@ -385,6 +386,40 @@ function BookingCard({
                 icon={MapPin}
                 label="Location"
                 value={booking.lab.city}
+              />
+            )}
+            {booking.statusUpdatedAt && booking.status !== "PENDING" && (
+              <InfoChip
+                icon={
+                  booking.status === "COMPLETED"
+                    ? CheckCircle2
+                    : booking.status === "CANCELLED"
+                      ? Ban
+                      : CalendarDays
+                }
+                label={
+                  booking.status === "CONFIRMED"
+                    ? "Confirmed on"
+                    : booking.status === "COMPLETED"
+                      ? "Completed on"
+                      : booking.status === "CANCELLED"
+                        ? "Cancelled on"
+                        : "Updated on"
+                }
+                value={new Date(booking.statusUpdatedAt).toLocaleString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+                accent={
+                  booking.status === "COMPLETED"
+                    ? "emerald"
+                    : booking.status === "CANCELLED"
+                      ? "red"
+                      : "blue"
+                }
               />
             )}
           </div>
@@ -507,12 +542,19 @@ function BookingCard({
 
 // ── InfoChip ──────────────────────────────────────────────────────────────────
 
-function InfoChip({ icon: Icon, label, value }) {
+function InfoChip({ icon: Icon, label, value, accent }) {
+  const accentColors = {
+    emerald: { icon: "text-emerald-500", label: "text-emerald-600" },
+    red: { icon: "text-red-400", label: "text-red-500" },
+    blue: { icon: "text-blue-400", label: "text-blue-500" },
+  };
+  const colors = accentColors[accent] || {};
+
   return (
     <div className="flex items-start gap-2">
-      <Icon className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+      <Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${colors.icon || "text-gray-400"}`} />
       <div className="min-w-0">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide leading-none">
+        <p className={`text-[10px] font-bold uppercase tracking-wide leading-none ${colors.label || "text-gray-400"}`}>
           {label}
         </p>
         <p className="text-xs font-semibold text-gray-700 truncate mt-0.5">
@@ -677,13 +719,13 @@ export default function MyBookings() {
 
   const filtered = searchQuery.trim()
     ? tabFiltered.filter((b) => {
-        const q = searchQuery.toLowerCase();
-        const labName = b.lab?.name?.toLowerCase() || "";
-        const testMatch = b.bookingTests?.some((bt) =>
-          bt.name?.toLowerCase().includes(q),
-        );
-        return labName.includes(q) || testMatch;
-      })
+      const q = searchQuery.toLowerCase();
+      const labName = b.lab?.name?.toLowerCase() || "";
+      const testMatch = b.bookingTests?.some((bt) =>
+        bt.name?.toLowerCase().includes(q),
+      );
+      return labName.includes(q) || testMatch;
+    })
     : tabFiltered;
 
   const pendingCount = bookings.filter((b) => b.status === "PENDING").length;
@@ -746,11 +788,10 @@ export default function MyBookings() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-all ${
-                      active
-                        ? "border-emerald-500 text-emerald-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-all ${active
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     {dot && (
                       <span
@@ -924,8 +965,8 @@ function ReviewModal({
     } catch (err) {
       setError(
         err?.response?.data?.message ||
-          err?.response?.data ||
-          "Failed to submit review.",
+        err?.response?.data ||
+        "Failed to submit review.",
       );
     } finally {
       setSubmitting(false);
