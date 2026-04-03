@@ -55,4 +55,7 @@ public class User {
     @OneToMany(mappedBy = "user")
     @JsonIgnore
     private List<Review> reviews;
+
+    @OneToMany(mappedBy = "requestedBy")
+    private List<LabRequest> labRequests;
 }

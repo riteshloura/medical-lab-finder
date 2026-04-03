@@ -52,14 +52,14 @@ public class LabController {
         return ResponseEntity.ok(labService.getLabsByTestAndLocation(test, location));
     }
 
-    @PreAuthorize("hasRole('LAB_OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/labs")
     public ResponseEntity<?> createLab(@Valid @RequestBody CreateLabRequest lab,
                                        Authentication authentication) {
         return labService.createLab(lab, authentication.getName());
     }
 
-    @PreAuthorize("hasRole('LAB_OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/labs/{id}")
     public ResponseEntity<?> updateLab(@PathVariable Long id,
                                        @Valid @RequestBody CreateLabRequest lab,

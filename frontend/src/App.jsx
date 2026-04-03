@@ -9,9 +9,11 @@ import LabDetails from "./pages/LabDetails";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import MyBookings from "./pages/MyBookings";
 import OwnerRoute from "./components/OwnerRoute";
+import AdminRoute from "./components/AdminRoute";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   return (
@@ -35,6 +37,14 @@ function App() {
                 <OwnerRoute>
                   <OwnerDashboard />
                 </OwnerRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               }
             />
           </Routes>

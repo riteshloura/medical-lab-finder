@@ -110,4 +110,20 @@ public class LabService {
 
         return ResponseEntity.ok(labRepo.save(labEntity));
     }
+
+    public ResponseEntity<?> deleteLab(Long labId, String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Lab labEntity = labRepo.findById(labId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lab", labId));
+
+        if (!labEntity.getOwner().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You are not authorised to delete this lab");
+        }
+
+        labRepo.delete(labEntity);
+        return ResponseEntity.ok("Lab deleted successfully");
+    }
 }
+
