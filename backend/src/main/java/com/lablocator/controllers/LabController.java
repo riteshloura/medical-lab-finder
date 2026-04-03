@@ -34,7 +34,7 @@ public class LabController {
     }
 
     @GetMapping("/labs/{id}")
-    public Lab getLabById(@PathVariable Long id) {
+    public GetFilterLabsResponse getLabById(@PathVariable Long id) {
         return labService.getLabById(id);
     }
 

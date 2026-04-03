@@ -39,9 +39,17 @@ public class LabService {
         return res;
     }
 
-    public Lab getLabById(Long id) {
-        return labRepo.findById(id)
+    public GetFilterLabsResponse getLabById(Long id) {
+        Lab lab = labRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lab", id));
+
+        return new GetFilterLabsResponse(
+                lab.getName(), lab.getDescription(), lab.getAddress(),
+                lab.getCity(), lab.getState(), lab.getContactNumber(),
+                lab.getId(), lab.getLatitude(), lab.getLongitude(),
+                lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                lab.getTotalReviews(), lab.getAvgRating()
+        );
     }
 
     public List<GetOwnersLabResponse> getOwnerLabs(String email) {

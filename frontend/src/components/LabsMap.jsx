@@ -77,11 +77,17 @@ const selectedLabIcon = new Icon({
 
 function RecenterMap({ center }) {
   const map = useMap();
+
+  // Extract coordinates to use as stable dependencies
+  const lat = center?.[0];
+  const lng = center?.[1];
+  const timestamp = center?.[2];
+
   useEffect(() => {
-    if (center) {
-      map.setView(center, 14, { animate: true, duration: 0.8 });
+    if (lat !== undefined && lng !== undefined) {
+      map.setView([lat, lng], 14, { animate: true, duration: 0.8 });
     }
-  }, [center, map]);
+  }, [lat, lng, timestamp, map]);
   return null;
 }
 
@@ -519,7 +525,7 @@ function LabsMap({ userLocation, labs, selectedLab, className = "" }) {
             selectedLab?.latitude && selectedLab?.longitude
               ? [selectedLab.latitude, selectedLab.longitude]
               : userLocation
-                ? [userLocation.lat, userLocation.lng]
+                ? [userLocation.lat, userLocation.lng, userLocation.timestamp]
                 : null
           }
         />
