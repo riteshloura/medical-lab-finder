@@ -14,6 +14,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
+import { HomeRedirectGuard } from "./pages/HomeRedirectGuard";
 
 function App() {
   return (
@@ -23,7 +24,7 @@ function App() {
           {/* Global toast layer — rendered outside page scroll context */}
           <NotificationToastLayer />
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<HomeRedirectGuard><Home /></HomeRedirectGuard>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />

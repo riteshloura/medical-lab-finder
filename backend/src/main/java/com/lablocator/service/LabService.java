@@ -1,6 +1,7 @@
 package com.lablocator.service;
 
 import com.lablocator.dto.lab.CreateLabRequest;
+import com.lablocator.dto.lab.GetFilterLabsResponse;
 import com.lablocator.dto.lab.GetNearbyLabsResponse;
 import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.exceptions.AccessDeniedException;
@@ -60,8 +61,21 @@ public class LabService {
         return res;
     }
 
-    public List<Lab> getLabsByTestAndLocation(String test, String location) {
-        return labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
+    public List<GetFilterLabsResponse> getLabsByTestAndLocation(String test, String location) {
+        List<Lab> labs = labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
+
+        List<GetFilterLabsResponse> res = new ArrayList<>();
+
+        for (Lab lab : labs) {
+            res.add(new GetFilterLabsResponse(
+                    lab.getName(), lab.getDescription(), lab.getAddress(),
+                    lab.getCity(), lab.getState(), lab.getContactNumber(),
+                    lab.getId(), lab.getLatitude(), lab.getLongitude(),
+                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                    lab.getTotalReviews(), lab.getAvgRating()
+            ));
+        }
+        return res;
     }
 
     public ResponseEntity<?> createLab(CreateLabRequest lab, String email) {

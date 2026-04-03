@@ -382,8 +382,8 @@ function Home() {
                         key={tag}
                         onClick={() => handleQuickFilter(tag)}
                         className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all ${activeFilter === tag
-                            ? "bg-emerald-500 border-emerald-500 text-white"
-                            : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600"
+                          ? "bg-emerald-500 border-emerald-500 text-white"
+                          : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600"
                           }`}
                       >
                         {tag}
@@ -408,8 +408,8 @@ function Home() {
             <button
               onClick={handleLabsTab}
               className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all ${isSidebarOpen && sidebarTab === "labs"
-                  ? "bg-emerald-500 text-white shadow-sm"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 }`}
             >
               <Building2 className="w-3.5 h-3.5" />
@@ -421,8 +421,8 @@ function Home() {
             <button
               onClick={handleBookingsTab}
               className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold transition-all relative ${isSidebarOpen && sidebarTab === "bookings"
-                  ? "bg-emerald-500 text-white shadow-sm"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 }`}
             >
               <CalendarDays className="w-3.5 h-3.5" />
@@ -549,8 +549,8 @@ function Home() {
                           <button
                             onClick={() => setShowSortMenu((v) => !v)}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${labSort !== "default"
-                                ? "bg-emerald-100 text-emerald-600"
-                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              ? "bg-emerald-100 text-emerald-600"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                               }`}
                             title="Sort & filter"
                           >
@@ -574,8 +574,8 @@ function Home() {
                                     key={opt.key}
                                     onClick={() => { setLabSort(opt.key); setShowSortMenu(false); }}
                                     className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left ${labSort === opt.key
-                                        ? "bg-emerald-50 text-emerald-700"
-                                        : "text-gray-600 hover:bg-gray-50"
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : "text-gray-600 hover:bg-gray-50"
                                       }`}
                                   >
                                     <span>{opt.icon}</span>
@@ -630,8 +630,8 @@ function Home() {
                   <button
                     onClick={() => setSidebarTab("labs")}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${sidebarTab === "labs"
-                        ? "border-emerald-500 text-emerald-600"
-                        : "border-transparent text-gray-400 hover:text-gray-600"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-gray-400 hover:text-gray-600"
                       }`}
                   >
                     <Building2 className="w-3.5 h-3.5" />
@@ -647,8 +647,8 @@ function Home() {
                       if (recentBookings.length === 0 && !isLoadingBookings) fetchRecentBookings();
                     }}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-all ${sidebarTab === "bookings"
-                        ? "border-emerald-500 text-emerald-600"
-                        : "border-transparent text-gray-400 hover:text-gray-600"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-gray-400 hover:text-gray-600"
                       }`}
                   >
                     <CalendarDays className="w-3.5 h-3.5" />
@@ -714,8 +714,8 @@ function Home() {
                           key={opt.key}
                           onClick={() => setLabSort(labSort === opt.key ? "default" : opt.key)}
                           className={`flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border font-semibold transition-all ${labSort === opt.key
-                              ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
-                              : "bg-white border-gray-200 text-gray-500 hover:border-emerald-300 hover:text-emerald-600"
+                            ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                            : "bg-white border-gray-200 text-gray-500 hover:border-emerald-300 hover:text-emerald-600"
                             }`}
                         >
                           <span className="text-[10px]">{opt.icon}</span>
@@ -817,8 +817,8 @@ function Home() {
                             transition={{ delay: idx * 0.04 }}
                             onClick={() => setSelectedLab(lab)}
                             className={`rounded-2xl border cursor-pointer transition-all duration-200 ${selectedLab?.id === lab.id
-                                ? "border-emerald-400 bg-emerald-50/60 shadow-md"
-                                : "border-gray-100 bg-white hover:border-emerald-200 hover:shadow-sm"
+                              ? "border-emerald-400 bg-emerald-50/60 shadow-md"
+                              : "border-gray-100 bg-white hover:border-emerald-200 hover:shadow-sm"
                               }`}
                           >
                             <div className="p-4">
