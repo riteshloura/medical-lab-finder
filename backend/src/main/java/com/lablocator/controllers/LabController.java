@@ -1,6 +1,7 @@
 package com.lablocator.controllers;
 
 import com.lablocator.dto.lab.CreateLabRequest;
+import com.lablocator.dto.lab.GetFilterLabsResponse;
 import com.lablocator.dto.lab.GetNearbyLabsResponse;
 import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.model.Lab;
@@ -33,7 +34,7 @@ public class LabController {
     }
 
     @GetMapping("/labs/{id}")
-    public Lab getLabById(@PathVariable Long id) {
+    public GetFilterLabsResponse getLabById(@PathVariable Long id) {
         return labService.getLabById(id);
     }
 
@@ -45,21 +46,21 @@ public class LabController {
 
 //    /labs/search?test={val}&&location={loc}
     @GetMapping("/labs/search")
-    public ResponseEntity<List<Lab>> getLabsByTestAndLocation(
+    public ResponseEntity<List<GetFilterLabsResponse>> getLabsByTestAndLocation(
             @RequestParam String test,
             @RequestParam String location
             ) {
         return ResponseEntity.ok(labService.getLabsByTestAndLocation(test, location));
     }
 
-    @PreAuthorize("hasRole('LAB_OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/labs")
     public ResponseEntity<?> createLab(@Valid @RequestBody CreateLabRequest lab,
                                        Authentication authentication) {
         return labService.createLab(lab, authentication.getName());
     }
 
-    @PreAuthorize("hasRole('LAB_OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/labs/{id}")
     public ResponseEntity<?> updateLab(@PathVariable Long id,
                                        @Valid @RequestBody CreateLabRequest lab,

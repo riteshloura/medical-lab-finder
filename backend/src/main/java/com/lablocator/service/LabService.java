@@ -1,6 +1,7 @@
 package com.lablocator.service;
 
 import com.lablocator.dto.lab.CreateLabRequest;
+import com.lablocator.dto.lab.GetFilterLabsResponse;
 import com.lablocator.dto.lab.GetNearbyLabsResponse;
 import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.exceptions.AccessDeniedException;
@@ -38,9 +39,17 @@ public class LabService {
         return res;
     }
 
-    public Lab getLabById(Long id) {
-        return labRepo.findById(id)
+    public GetFilterLabsResponse getLabById(Long id) {
+        Lab lab = labRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lab", id));
+
+        return new GetFilterLabsResponse(
+                lab.getName(), lab.getDescription(), lab.getAddress(),
+                lab.getCity(), lab.getState(), lab.getContactNumber(),
+                lab.getId(), lab.getLatitude(), lab.getLongitude(),
+                lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                lab.getTotalReviews(), lab.getAvgRating()
+        );
     }
 
     public List<GetOwnersLabResponse> getOwnerLabs(String email) {
@@ -60,8 +69,21 @@ public class LabService {
         return res;
     }
 
-    public List<Lab> getLabsByTestAndLocation(String test, String location) {
-        return labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
+    public List<GetFilterLabsResponse> getLabsByTestAndLocation(String test, String location) {
+        List<Lab> labs = labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
+
+        List<GetFilterLabsResponse> res = new ArrayList<>();
+
+        for (Lab lab : labs) {
+            res.add(new GetFilterLabsResponse(
+                    lab.getName(), lab.getDescription(), lab.getAddress(),
+                    lab.getCity(), lab.getState(), lab.getContactNumber(),
+                    lab.getId(), lab.getLatitude(), lab.getLongitude(),
+                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                    lab.getTotalReviews(), lab.getAvgRating()
+            ));
+        }
+        return res;
     }
 
     public ResponseEntity<?> createLab(CreateLabRequest lab, String email) {
@@ -110,4 +132,20 @@ public class LabService {
 
         return ResponseEntity.ok(labRepo.save(labEntity));
     }
+
+    public ResponseEntity<?> deleteLab(Long labId, String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Lab labEntity = labRepo.findById(labId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lab", labId));
+
+        if (!labEntity.getOwner().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You are not authorised to delete this lab");
+        }
+
+        labRepo.delete(labEntity);
+        return ResponseEntity.ok("Lab deleted successfully");
+    }
 }
+
