@@ -25,6 +25,11 @@ import {
   LogOut,
   Menu,
   LayoutDashboard,
+  MapPin,
+  Phone,
+  Calendar,
+  Hash,
+  Globe,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
@@ -113,33 +118,133 @@ function StatCard({ icon: Icon, label, value, iconColor, iconBg, delay = 0 }) {
   );
 }
 
-// ── Payload Preview ───────────────────────────────────────────────────────────
+// ── Lab Detail Fields Grid ────────────────────────────────────────────────────
 
-function PayloadPreview({ payload }) {
+function LabFieldsGrid({ data }) {
+  const fmt = (t) => {
+    if (!t) return <span className="text-gray-300 italic">—</span>;
+    // handle "HH:MM:SS" or "HH:MM"
+    const [h, m] = t.split(":");
+    const hour = parseInt(h, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    return `${((hour % 12) || 12)}:${m} ${ampm}`;
+  };
+
+  const Field = ({ icon: Icon, label, value, wide }) => (
+    <div className={`flex flex-col gap-0.5 ${wide ? "col-span-2" : ""}`}>
+      <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        <Icon className="w-3 h-3" /> {label}
+      </span>
+      <span className="text-xs font-semibold text-gray-800 leading-snug">
+        {value || <span className="text-gray-300 italic font-normal">—</span>}
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 mt-3">
+      <Field icon={Building2} label="Lab Name" value={data.name} wide />
+      <Field icon={FileText} label="Description" value={data.description} wide />
+      <Field icon={MapPin} label="Address" value={data.address} />
+      <Field icon={MapPin} label="City" value={data.city} />
+      <Field icon={MapPin} label="State" value={data.state} />
+      <Field icon={Phone} label="Contact" value={data.contactNumber} />
+      <Field icon={Calendar} label="Opening Time" value={fmt(data.openingTime)} />
+      <Field icon={Calendar} label="Closing Time" value={fmt(data.closingTime)} />
+      <Field icon={Hash} label="Online Slots" value={data.slotCapacityOnline} />
+      <Field icon={Globe} label="Coordinates" value={data.latitude != null ? `${data.latitude}, ${data.longitude}` : null} />
+    </div>
+  );
+}
+
+// ── Lab Details Panel (replaces PayloadPreview) ───────────────────────────────
+
+function LabDetailsPanel({ requestType, payload, labId }) {
   const [open, setOpen] = useState(false);
-  if (!payload) return <span className="text-gray-400 text-xs italic">No payload</span>;
+  const [labData, setLabData] = useState(null);
+  const [fetchError, setFetchError] = useState(false);
+
+  // For DELETE requests, fetch lab details when panel is opened
+  useEffect(() => {
+    if (requestType === "DELETE_LAB" && open && !labData && labId) {
+      api.get(`/labs/${labId}`)
+        .then((res) => setLabData(res.data))
+        .catch(() => setFetchError(true));
+    }
+  }, [open, requestType, labId, labData]);
+
+  // Parse payload for CREATE / UPDATE
   let parsed = null;
-  try { parsed = JSON.parse(payload); } catch {
-    return <span className="text-xs text-gray-500">{payload}</span>;
+  if (payload) {
+    try { parsed = JSON.parse(payload); } catch { /* ignore */ }
   }
+
+  const isDelete = requestType === "DELETE_LAB";
+
   return (
     <div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {parsed.name && <span className="text-xs font-semibold text-gray-800">📋 {parsed.name}</span>}
-        {parsed.city && parsed.state && <span className="text-xs text-gray-500">📍 {parsed.city}, {parsed.state}</span>}
-        {parsed.contactNumber && <span className="text-xs text-gray-500">📞 {parsed.contactNumber}</span>}
+      {/* Summary line — always visible */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {parsed?.name && (
+          <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+            <Building2 className="w-3 h-3 text-gray-400" /> {parsed.name}
+          </span>
+        )}
+        {isDelete && !parsed && labId && (
+          <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+            <Building2 className="w-3 h-3 text-gray-400" /> Lab ID #{labId}
+          </span>
+        )}
+        {parsed?.city && parsed?.state && (
+          <span className="text-xs text-gray-500 flex items-center gap-1">
+            <MapPin className="w-3 h-3" /> {parsed.city}, {parsed.state}
+          </span>
+        )}
+        {parsed?.contactNumber && (
+          <span className="text-xs text-gray-500 flex items-center gap-1">
+            <Phone className="w-3 h-3" /> {parsed.contactNumber}
+          </span>
+        )}
       </div>
+
+      {/* Delete warning banner */}
+      {isDelete && (
+        <div className="mt-2.5 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
+          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+          <p className="text-xs font-semibold text-red-700">
+            This lab will be <span className="font-black">permanently deleted</span>. Review the details carefully before approving.
+          </p>
+        </div>
+      )}
+
+      {/* Toggle */}
       <button
         onClick={() => setOpen((p) => !p)}
-        className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+        className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
       >
         {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         {open ? "Hide" : "Show"} full details
       </button>
+
+      {/* Expanded fields */}
       {open && (
-        <pre className="mt-2 text-[11px] bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-gray-700 overflow-x-auto whitespace-pre-wrap">
-          {JSON.stringify(parsed, null, 2)}
-        </pre>
+        <div className="mt-1">
+          {isDelete ? (
+            fetchError ? (
+              <p className="text-xs text-red-500 italic mt-2">Could not load lab details.</p>
+            ) : !labData ? (
+              <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading lab details…
+              </div>
+            ) : (
+              <LabFieldsGrid data={labData} />
+            )
+          ) : parsed ? (
+            <LabFieldsGrid data={parsed} />
+          ) : (
+            <p className="text-xs text-gray-400 italic mt-2">No details available.</p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -188,12 +293,16 @@ function RequestCard({ request, onAction, actionLoading, index }) {
             </div>
           </div>
 
-          {/* Payload */}
+          {/* Lab Details */}
           <div className="px-4 sm:px-5 py-4 border-b border-gray-50">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <FileText className="w-3 h-3" /> Change Details
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+              <FileText className="w-3 h-3" /> Lab Details
             </p>
-            <PayloadPreview payload={request.changePayload} />
+            <LabDetailsPanel
+              requestType={request.requestType}
+              payload={request.changePayload}
+              labId={request.labId}
+            />
           </div>
 
           {/* Admin Remark */}
