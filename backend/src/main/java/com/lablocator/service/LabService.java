@@ -7,14 +7,18 @@ import com.lablocator.dto.lab.GetOwnersLabResponse;
 import com.lablocator.exceptions.AccessDeniedException;
 import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.Lab;
+import com.lablocator.model.LabSlot;
 import com.lablocator.model.User;
 import com.lablocator.projection.NearbyLabProjection;
 import com.lablocator.repository.LabRepo;
+import com.lablocator.repository.LabSlotRepo;
 import com.lablocator.repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,16 +26,43 @@ import java.util.List;
 public class LabService {
     @Autowired private LabRepo labRepo;
     @Autowired private UserRepo userRepo;
+    @Autowired private LabSlotRepo labSlotRepo;
+
+    public LabSlot getOrCreateSlot(Lab lab, LocalDate date) {
+//        LocalDate today = LocalDate.now();
+        LabSlot slot = labSlotRepo.findSlotByLabAndDate(lab, date);
+        if (slot == null) {
+            slot = LabSlot.builder()
+                    .lab(lab)
+                    .date(date)
+                    .totalSlots(lab.getSlotCapacityOnline())
+                    .bookedSlots(0)
+                    .build();
+
+            labSlotRepo.save(slot);
+        }
+        return slot;
+    }
+
+    public int getAvailableSlots(LabSlot slot) {
+        return slot.getTotalSlots() - slot.getBookedSlots();
+    }
 
     public List<GetNearbyLabsResponse> getNearbyLabs(double lat, double lng, double radius) {
         List<NearbyLabProjection> labs = labRepo.findNearbyLabs(lat, lng, radius);
+
+        LocalDate today = LocalDate.now();
         List<GetNearbyLabsResponse> res = new ArrayList<>();
         for (NearbyLabProjection lab : labs) {
+            Lab oneLab = labRepo.findById(lab.getId()).orElse(null);
+            LabSlot slot = getOrCreateSlot(oneLab, today);
+
             res.add(new GetNearbyLabsResponse(
                     lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getContactNumber(),
                     lab.getId(), lab.getLatitude(), lab.getLongitude(),
-                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                    getAvailableSlots(slot),
+                    lab.getOpeningTime(), lab.getClosingTime(),
                     lab.getTotalReviews(), lab.getAvgRating(),
                     Math.round(lab.getDistance() * 100.0) / 100.0
             ));
@@ -43,11 +74,14 @@ public class LabService {
         Lab lab = labRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lab", id));
 
+        LocalDate today = LocalDate.now();
+        LabSlot slot = getOrCreateSlot(lab, today);
+
         return new GetFilterLabsResponse(
                 lab.getName(), lab.getDescription(), lab.getAddress(),
                 lab.getCity(), lab.getState(), lab.getContactNumber(),
                 lab.getId(), lab.getLatitude(), lab.getLongitude(),
-                lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                getAvailableSlots(slot), lab.getOpeningTime(), lab.getClosingTime(),
                 lab.getTotalReviews(), lab.getAvgRating()
         );
     }
@@ -56,13 +90,16 @@ public class LabService {
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        LocalDate today = LocalDate.now();
         List<GetOwnersLabResponse> res = new ArrayList<>();
         for (Lab lab : labRepo.findAllByOwnerId(user.getId())) {
+            LabSlot slot = getOrCreateSlot(lab, today);
+
             res.add(new GetOwnersLabResponse(
                     lab.getId(), lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getLongitude(), lab.getLatitude(),
-                    lab.getContactNumber(), lab.getSlotCapacityOnline(), lab.getTotalReviews(),
-                    lab.getAvgRating(), lab.getCreatedAt(),
+                    lab.getContactNumber(), getAvailableSlots(slot),
+                    lab.getTotalReviews(), lab.getAvgRating(), lab.getCreatedAt(),
                     lab.getOpeningTime(), lab.getClosingTime()
             ));
         }
@@ -72,14 +109,17 @@ public class LabService {
     public List<GetFilterLabsResponse> getLabsByTestAndLocation(String test, String location) {
         List<Lab> labs = labRepo.findByLabTests_Test_NameContainingIgnoreCaseAndCityContainingIgnoreCase(test, location);
 
+        LocalDate today = LocalDate.now();
         List<GetFilterLabsResponse> res = new ArrayList<>();
 
         for (Lab lab : labs) {
+            LabSlot slot = getOrCreateSlot(lab, today);
+
             res.add(new GetFilterLabsResponse(
                     lab.getName(), lab.getDescription(), lab.getAddress(),
                     lab.getCity(), lab.getState(), lab.getContactNumber(),
                     lab.getId(), lab.getLatitude(), lab.getLongitude(),
-                    lab.getSlotCapacityOnline(), lab.getOpeningTime(), lab.getClosingTime(),
+                    getAvailableSlots(slot), lab.getOpeningTime(), lab.getClosingTime(),
                     lab.getTotalReviews(), lab.getAvgRating()
             ));
         }

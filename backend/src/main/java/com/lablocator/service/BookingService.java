@@ -12,14 +12,12 @@ import com.lablocator.exceptions.AccessDeniedException;
 import com.lablocator.exceptions.BadRequestException;
 import com.lablocator.exceptions.ResourceNotFoundException;
 import com.lablocator.model.*;
-import com.lablocator.repository.BookingRepo;
-import com.lablocator.repository.LabRepo;
-import com.lablocator.repository.LabTestRepo;
-import com.lablocator.repository.UserRepo;
+import com.lablocator.repository.*;
 import com.lablocator.service.email.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +26,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import static jakarta.persistence.LockModeType.PESSIMISTIC_WRITE;
 
 @Service
 public class BookingService {
@@ -41,10 +41,14 @@ public class BookingService {
     @Autowired
     private LabTestRepo labTestRepo;
     @Autowired
-    private EmailService emailService;
+    private LabSlotRepo labSlotRepo;
 
     @Autowired
+    private EmailService emailService;
+    @Autowired
     private NotificationService notificationService;
+    @Autowired
+    LabService labService;
 
 
     @Transactional
@@ -63,12 +67,26 @@ public class BookingService {
         Lab lab = labRepo.findById(labId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lab", labId));
 
+        LabSlot slots = labSlotRepo.findByLabAndDate(lab, bookingDate);
+        if (slots == null) {
+            slots = LabSlot.builder()
+                    .lab(lab)
+                    .date(bookingDate)
+                    .totalSlots(lab.getSlotCapacityOnline())
+                    .bookedSlots(0)
+                    .build();
+
+            labSlotRepo.save(slots);
+        }
+
+        int availableSlots = labService.getAvailableSlots(slots);
+
         if (req.testIds() == null || req.testIds().isEmpty()) {
             throw new BadRequestException("At least one test must be selected to create a booking");
         }
 
-        if ((lab.getSlotCapacityOnline() - req.testIds().size()) < 0) {
-            throw new BadRequestException("Insufficient available slots");
+        if (availableSlots < 1) {
+            throw new BadRequestException("Slots full");
         }
 
         // Validate Time Slot
@@ -116,12 +134,10 @@ public class BookingService {
 
         booking.setBookingTests(bookingTests);
 
+        slots.setBookedSlots(slots.getBookedSlots() + 1);
+        labSlotRepo.save(slots);
+
         booking = bookingRepo.save(booking);
-
-        int newSlotCapacity = lab.getSlotCapacityOnline() - req.testIds().size();
-        lab.setSlotCapacityOnline(newSlotCapacity);
-
-        labRepo.save(lab);
 
         return booking;
     }
