@@ -1,5 +1,6 @@
 package com.lablocator.controllers;
 
+import com.lablocator.dto.user.GetUserResponse;
 import com.lablocator.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,8 @@ public class userController {
     }
 
     @GetMapping("/user/{id}")
-    public ResponseEntity<?> getUser(@PathVariable Long id) {
-        return userService.getUser(id);
+    public ResponseEntity<GetUserResponse> getUser(@PathVariable Long id) {
+
+        return  ResponseEntity.ok(userService.getUser(id));
     }
 }
