@@ -1,13 +1,11 @@
 package com.lablocator.controllers;
 
 import com.lablocator.dto.user.GetUserResponse;
+import com.lablocator.dto.user.UpdateUserRequest;
 import com.lablocator.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
@@ -24,5 +22,10 @@ public class userController {
     public ResponseEntity<GetUserResponse> getUser(@PathVariable Long id) {
 
         return  ResponseEntity.ok(userService.getUser(id));
+    }
+
+    @PutMapping("/user/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest updateUserRequest ) {
+        return ResponseEntity.ok(userService.updateUser(id, updateUserRequest));
     }
 }

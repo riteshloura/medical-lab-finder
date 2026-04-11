@@ -6,6 +6,7 @@ import {
   clearAuthData,
   getCurrentUser,
   isAuthenticated,
+  getToken,
 } from "../api/auth";
 
 const AuthContext = createContext(null);
@@ -82,6 +83,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUserContext = (updatedData) => {
+    const newData = { ...user, ...updatedData };
+    setUser(newData);
+    saveAuthData(getToken(), newData);
+  };
+
   // Clear error
   const clearError = () => {
     setError(null);
@@ -96,6 +103,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUserContext,
     clearError,
   };
 
