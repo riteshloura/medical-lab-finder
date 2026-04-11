@@ -10,9 +10,14 @@ import {
   XCircle,
   Loader2,
   Save,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getUserProfile, updateUserProfile } from "../api/user";
+import {
+  getUserProfile,
+  updateUserProfile,
+  deleteUserProfile,
+} from "../api/user";
 import Navbar from "../components/Navbar";
 
 export default function MyProfile() {
@@ -22,10 +27,12 @@ export default function MyProfile() {
     updateUserContext,
     isAuthenticated,
     loading: authLoading,
+    logout,
   } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -86,6 +93,27 @@ export default function MyProfile() {
       setError("Failed to update profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete your account? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError("");
+      await deleteUserProfile(user.userId);
+      logout();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete account.");
+      setDeleting(false);
     }
   };
 
@@ -234,6 +262,7 @@ export default function MyProfile() {
                     type="submit"
                     disabled={
                       saving ||
+                      deleting ||
                       !formData.name.trim() ||
                       formData.name === profile?.name
                     }
@@ -248,6 +277,30 @@ export default function MyProfile() {
                   </button>
                 </div>
               </form>
+
+              {/* Danger Zone */}
+              <div className="mt-10 pt-8 border-t border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  Danger Zone
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Once you delete your account, there is no going back. Please
+                  be certain.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
+                >
+                  {deleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Delete Account
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

@@ -45,4 +45,11 @@ public class UserService {
                 updatedUser.getCreatedAt()
         );
     }
+
+    public void deleteUser(Long id) {
+        User user = userRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        userRepo.delete(user);
+    }
 }
