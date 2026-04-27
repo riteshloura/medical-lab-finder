@@ -203,7 +203,7 @@ function Navbar() {
                     )}
 
                     {/* Settings — non-admin only */}
-                    {!isAdmin && (
+                    {/* {!isAdmin && (
                       <DropdownItem
                         key="settings"
                         startContent={
@@ -212,7 +212,7 @@ function Navbar() {
                       >
                         Settings
                       </DropdownItem>
-                    )}
+                    )} */}
 
                     {/* Logout */}
                     <DropdownItem

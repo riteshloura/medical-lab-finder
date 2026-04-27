@@ -279,28 +279,30 @@ export default function MyProfile() {
               </form>
 
               {/* Danger Zone */}
-              <div className="mt-10 pt-8 border-t border-gray-100">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Danger Zone
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Once you delete your account, there is no going back. Please
-                  be certain.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
-                  disabled={deleting}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
-                >
-                  {deleting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                  Delete Account
-                </button>
-              </div>
+              {user?.role === "USER" && (
+                <div className="mt-10 pt-8 border-t border-gray-100">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    Danger Zone
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Once you delete your account, there is no going back. Please
+                    be certain.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
+                  >
+                    {deleting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    Delete Account
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
