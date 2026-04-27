@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { Button, Divider } from "@heroui/react";
 import { motion } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, TestTube, ArrowRight, Loader2, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  TestTube,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { resendVerificationEmail } from "../api/auth";
@@ -59,13 +70,15 @@ function Login() {
     try {
       const res = await resendVerificationEmail(email);
       setResendStatus("sent");
-      setResendMessage(res?.message || "Verification email sent! Check your inbox.");
+      setResendMessage(
+        res?.message || "Verification email sent! Check your inbox.",
+      );
     } catch (err) {
       setResendStatus("error");
       setResendMessage(
         err?.response?.data?.message ||
         err?.response?.data ||
-        "Failed to send email. Please try again."
+        "Failed to send email. Please try again.",
       );
     }
   };
@@ -75,7 +88,7 @@ function Login() {
 
   //     const response = await api.get("/labs");
   //     const data = await response.data;
-  //     console.log(data); 
+  //     console.log(data);
   //   }
 
   return (
@@ -96,7 +109,8 @@ function Login() {
             </div>
             <h1 className="text-4xl font-bold mb-4">Welcome Back!</h1>
             <p className="text-emerald-100 text-lg max-w-md">
-              Access your health reports, track bookings, and find the best labs near you.
+              Access your health reports, track bookings, and find the best labs
+              near you.
             </p>
           </motion.div>
 
@@ -106,7 +120,7 @@ function Login() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-12 grid grid-cols-3 gap-8 text-center"
           >
-            <div>
+            {/* <div>
               <div className="text-3xl font-bold">500+</div>
               <div className="text-emerald-100 text-sm">Partner Labs</div>
             </div>
@@ -117,7 +131,7 @@ function Login() {
             <div>
               <div className="text-3xl font-bold">4.8</div>
               <div className="text-emerald-100 text-sm">User Rating</div>
-            </div>
+            </div> */}
           </motion.div>
         </div>
       </div>
@@ -164,7 +178,8 @@ function Login() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">Email not verified</p>
                     <p className="text-sm mt-0.5">
-                      Please check <strong>{email}</strong> for a verification link.
+                      Please check <strong>{email}</strong> for a verification
+                      link.
                     </p>
                     {resendStatus === "sent" && (
                       <div className="flex items-center gap-1 mt-2 text-emerald-700">
@@ -173,7 +188,9 @@ function Login() {
                       </div>
                     )}
                     {resendStatus === "error" && (
-                      <p className="text-sm mt-2 text-red-600">{resendMessage}</p>
+                      <p className="text-sm mt-2 text-red-600">
+                        {resendMessage}
+                      </p>
                     )}
                     {resendStatus !== "sent" && (
                       <button
@@ -183,9 +200,15 @@ function Login() {
                         className="mt-2 flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2 disabled:opacity-50"
                       >
                         {resendStatus === "sending" ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                            Sending...
+                          </>
                         ) : (
-                          <><RefreshCw className="w-4 h-4" /> Resend verification email</>
+                          <>
+                            <RefreshCw className="w-4 h-4" /> Resend
+                            verification email
+                          </>
                         )}
                       </button>
                     )}
@@ -207,7 +230,11 @@ function Login() {
                   type="email"
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => { console.log(isUnverified); setIsUnverified(false); return setEmail(e.target.value) }}
+                  onChange={(e) => {
+                    console.log(isUnverified);
+                    setIsUnverified(false);
+                    return setEmail(e.target.value);
+                  }}
                   className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-gray-900 placeholder-gray-400"
                 />
               </div>
@@ -282,7 +309,7 @@ function Login() {
             </Button>
           </form>
 
-          <div className="mt-8">
+          {/* <div className="mt-8">
             <Divider className="my-4" />
             <p className="text-center text-gray-600 text-sm">
               Or continue with
@@ -325,7 +352,7 @@ function Login() {
                 <span>Facebook</span>
               </Button>
             </div>
-          </div>
+          </div> */}
 
           <p className="mt-8 text-center text-gray-600">
             Don't have an account?{" "}
