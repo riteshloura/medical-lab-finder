@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:8080/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -19,7 +19,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor - handles token expiration and errors
@@ -32,19 +32,22 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 ||
       error.response?.status === 403 ||
-      (error.response?.status === 500 && 
+      (error.response?.status === 500 &&
         error.response?.data?.message?.includes?.("JWT"))
     ) {
       // Clear invalid token
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       // Redirect to login if not already there
-      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+      if (
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/register"
+      ) {
         window.location.href = "/login";
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

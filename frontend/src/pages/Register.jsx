@@ -355,7 +355,7 @@ function Register() {
             </Button>
           </form>
 
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <Divider className="my-4" />
             <p className="text-center text-gray-600 text-sm">
               Or continue with
@@ -398,7 +398,7 @@ function Register() {
                 <span>Facebook</span>
               </Button>
             </div>
-          </div>
+          </div> */}
 
           <p className="mt-8 text-center text-gray-600">
             Already have an account?{" "}
