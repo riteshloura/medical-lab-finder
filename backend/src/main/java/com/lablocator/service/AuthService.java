@@ -76,6 +76,27 @@ public class AuthService {
         return new RegisterResponse(message, emailSent);
     }
 
+    public RegisterResponse registerAdmin(RegisterRequest req) {
+        // Enforce single-admin rule
+        if (userRepo.existsByRole(Role.ADMIN)) {
+            throw new ConflictException("An admin account already exists. Only one admin is allowed.");
+        }
+
+        if (userRepo.findByEmail(req.email()).isPresent()) {
+            throw new ConflictException("An account with email '" + req.email() + "' already exists");
+        }
+
+        User admin = new User();
+        admin.setEmail(req.email());
+        admin.setPassword(passwordEncoder.encode(req.password()));
+        admin.setName(req.name());
+        admin.setRole(Role.ADMIN);
+        admin.setIsVerified(true); // No email verification for admin
+        userRepo.save(admin);
+
+        return new RegisterResponse("Admin account created successfully.", true);
+    }
+
     public LoginResponse loginUser(LoginRequest req) {
         // authenticationManager throws BadCredentialsException (handled by
         // GlobalExceptionHandler → 401)

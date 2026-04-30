@@ -15,6 +15,7 @@ import {
   Home,
   RefreshCw,
   User,
+  Users,
   CalendarDays,
   FileText,
   Pencil,
@@ -30,6 +31,10 @@ import {
   Calendar,
   Hash,
   Globe,
+  FlaskConical,
+  MailCheck,
+  MailX,
+  X,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
@@ -372,7 +377,10 @@ function RequestCard({ request, onAction, actionLoading, index }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
-  // ── Two separate states: all (for stats) + filtered (for list) ────────────
+  // ── Tab state ─────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("requests");
+
+  // ── Lab Requests state ────────────────────────────────────────────────────
   const [allRequests, setAllRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -381,10 +389,27 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // ── Users tab state ───────────────────────────────────────────────────────
+  const [allUsers, setAllUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userMsg, setUserMsg] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
+
+  // ── Tests tab state ───────────────────────────────────────────────────────
+  const [allTests, setAllTests] = useState([]);
+  const [testsLoading, setTestsLoading] = useState(false);
+  const [testMsg, setTestMsg] = useState(null);
+  const [deletingTest, setDeletingTest] = useState(null);
+  const [showAddTest, setShowAddTest] = useState(false);
+  const [newTestName, setNewTestName] = useState("");
+  const [newTestDesc, setNewTestDesc] = useState("");
+  const [addingTest, setAddingTest] = useState(false);
+
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch unfiltered list once (for accurate stats + tab counts)
+  // ── Lab Requests data helpers ──────────────────────────────────────────────────────
   const loadAll = async () => {
     try {
       const res = await api.get("/admin/lab-requests");
@@ -392,7 +417,6 @@ export default function AdminDashboard() {
     } catch { /* stats stay at 0 gracefully */ }
   };
 
-  // Fetch filtered list whenever the tab changes
   const loadFiltered = async () => {
     try {
       setLoading(true);
@@ -401,10 +425,7 @@ export default function AdminDashboard() {
       });
       setFilteredRequests(res.data);
     } catch (err) {
-      setMessage({
-        type: "error",
-        text: err?.response?.data?.message || err?.response?.data || "Failed to load requests.",
-      });
+      setMessage({ type: "error", text: err?.response?.data?.message || "Failed to load requests." });
     } finally {
       setLoading(false);
     }
@@ -415,7 +436,79 @@ export default function AdminDashboard() {
   useEffect(() => { loadAll(); }, []);
   useEffect(() => { loadFiltered(); }, [statusFilter]);
 
-  // Stats are ALWAYS derived from allRequests — never from filteredRequests
+  // ── Users data helpers ────────────────────────────────────────────────────────────
+  const loadUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const res = await api.get("/admin/users");
+      setAllUsers(res.data);
+    } catch (err) {
+      setUserMsg({ type: "error", text: err?.response?.data?.message || "Failed to load users." });
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  useEffect(() => { if (activeTab === "users") loadUsers(); }, [activeTab]);
+
+  const handleDeleteUser = async (userId) => {
+    setDeletingUser(userId);
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      setUserMsg({ type: "success", text: "User deleted successfully." });
+      setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch (err) {
+      setUserMsg({ type: "error", text: err?.response?.data?.message || "Failed to delete user." });
+    } finally {
+      setDeletingUser(null);
+      setConfirmDeleteUser(null);
+    }
+  };
+
+  // ── Tests data helpers ────────────────────────────────────────────────────────────
+  const loadTests = async () => {
+    try {
+      setTestsLoading(true);
+      const res = await api.get("/tests");
+      setAllTests(res.data);
+    } catch (err) {
+      setTestMsg({ type: "error", text: err?.response?.data?.message || "Failed to load tests." });
+    } finally {
+      setTestsLoading(false);
+    }
+  };
+
+  useEffect(() => { if (activeTab === "tests") loadTests(); }, [activeTab]);
+
+  const handleAddTest = async () => {
+    if (!newTestName.trim()) return;
+    setAddingTest(true);
+    try {
+      const res = await api.post("/admin/tests", { name: newTestName.trim(), description: newTestDesc.trim() || null });
+      setAllTests((prev) => [...prev, res.data]);
+      setTestMsg({ type: "success", text: `Test "${res.data.name}" added successfully.` });
+      setNewTestName(""); setNewTestDesc(""); setShowAddTest(false);
+    } catch (err) {
+      setTestMsg({ type: "error", text: err?.response?.data?.message || "Failed to add test." });
+    } finally {
+      setAddingTest(false);
+    }
+  };
+
+  const handleDeleteTest = async (testId) => {
+    setDeletingTest(testId);
+    try {
+      await api.delete(`/admin/tests/${testId}`);
+      setAllTests((prev) => prev.filter((t) => t.id !== testId));
+      setTestMsg({ type: "success", text: "Test deleted successfully." });
+    } catch (err) {
+      setTestMsg({ type: "error", text: err?.response?.data?.message || "Failed to delete test." });
+    } finally {
+      setDeletingTest(null);
+    }
+  };
+
+  // ── Shared stats & actions ───────────────────────────────────────────────────────
   const stats = {
     total: allRequests.length,
     pending: allRequests.filter((r) => r.requestStatus === "PENDING").length,
@@ -436,22 +529,17 @@ export default function AdminDashboard() {
     setMessage(null);
     try {
       await api.put(`/lab-request/${reqId}/updateStatus`, { status, requestType, adminRemark });
-      setMessage({
-        type: "success",
-        text: `Request ${status === "APPROVED" ? "approved" : "rejected"} successfully.`,
-      });
+      setMessage({ type: "success", text: `Request ${status === "APPROVED" ? "approved" : "rejected"} successfully.` });
       await Promise.all([loadAll(), loadFiltered()]);
     } catch (err) {
-      setMessage({
-        type: "error",
-        text: err?.response?.data?.message || err?.response?.data || "Action failed.",
-      });
+      setMessage({ type: "error", text: err?.response?.data?.message || err?.response?.data || "Action failed." });
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleLogout = () => { logout(); navigate("/login"); };
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -505,15 +593,29 @@ export default function AdminDashboard() {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-emerald-500 text-white shadow-sm shadow-emerald-500/30">
-            <Building2 className="w-4 h-4 flex-shrink-0" />
-            Lab Requests
-            {stats.pending > 0 && (
-              <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full bg-white/25 text-white">
-                {stats.pending}
-              </span>
-            )}
-          </div>
+          {[
+            { id: "requests", icon: Building2, label: "Lab Requests", badge: stats.pending },
+            { id: "users",    icon: Users,     label: "Users",        badge: 0 },
+            { id: "tests",    icon: FlaskConical, label: "Tests",     badge: 0 },
+          ].map(({ id, icon: Icon, label, badge }) => (
+            <button
+              key={id}
+              onClick={() => { setActiveTab(id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                activeTab === id
+                  ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+              {badge > 0 && (
+                <span className={`ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-full ${activeTab === id ? "bg-white/25 text-white" : "bg-emerald-100 text-emerald-700"}`}>
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
         </nav>
 
         {/* Footer */}
@@ -554,9 +656,9 @@ export default function AdminDashboard() {
             <div>
               <h1 className="text-sm font-bold text-gray-900">Admin Dashboard</h1>
               <p className="text-[11px] text-gray-400 hidden sm:block">
-                {stats.pending > 0
-                  ? `${stats.pending} request${stats.pending !== 1 ? "s" : ""} awaiting review`
-                  : "All requests reviewed"}
+                {activeTab === "requests" && (stats.pending > 0 ? `${stats.pending} request${stats.pending !== 1 ? "s" : ""} awaiting review` : "All requests reviewed")}
+                {activeTab === "users" && `${allUsers.length} registered user${allUsers.length !== 1 ? "s" : ""}`}
+                {activeTab === "tests" && `${allTests.length} test${allTests.length !== 1 ? "s" : ""} in system`}
               </p>
             </div>
           </div>
@@ -573,107 +675,204 @@ export default function AdminDashboard() {
 
         <main className="flex-1 px-4 sm:px-8 py-6 space-y-5">
 
-          {/* ── Stats — always from allRequests, never re-zero on filter change ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <StatCard icon={FileText} label="Total Requests" value={stats.total} iconColor="#7c3aed" iconBg="#f5f3ff" delay={0} />
-            <StatCard icon={Clock3} label="Pending Review" value={stats.pending} iconColor="#d97706" iconBg="#fffbeb" delay={0.05} />
-            <StatCard icon={CheckCircle2} label="Approved" value={stats.approved} iconColor="#059669" iconBg="#f0fdf4" delay={0.1} />
-            <StatCard icon={XCircle} label="Rejected" value={stats.rejected} iconColor="#dc2626" iconBg="#fef2f2" delay={0.15} />
-          </div>
+          {/* ══ LAB REQUESTS TAB ══════════════════════════════════════════════ */}
+          {activeTab === "requests" && (<>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <StatCard icon={FileText} label="Total Requests" value={stats.total} iconColor="#7c3aed" iconBg="#f5f3ff" delay={0} />
+              <StatCard icon={Clock3} label="Pending Review" value={stats.pending} iconColor="#d97706" iconBg="#fffbeb" delay={0.05} />
+              <StatCard icon={CheckCircle2} label="Approved" value={stats.approved} iconColor="#059669" iconBg="#f0fdf4" delay={0.1} />
+              <StatCard icon={XCircle} label="Rejected" value={stats.rejected} iconColor="#dc2626" iconBg="#fef2f2" delay={0.15} />
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {STATUS_FILTERS.map((f) => {
+                const count = tabCount(f); const active = statusFilter === f; const dot = STATUS_CONFIG[f]?.dot;
+                return (
+                  <button key={f} onClick={() => setStatusFilter(f)}
+                    className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-bold rounded-xl border transition-all ${active ? "bg-emerald-500 text-white border-transparent shadow-sm shadow-emerald-500/20" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"}`}>
+                    {dot && !active && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />}
+                    <span className="hidden sm:inline">{f.charAt(0) + f.slice(1).toLowerCase()}</span>
+                    <span className="sm:hidden">{f === "ALL" ? "All" : f.slice(0, 3)}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? "bg-white/25 text-white" : "bg-gray-100 text-gray-500"}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <AnimatePresence>
+              {message && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-600"}`}>
+                  {message.type === "success" ? <CheckCheck className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                  {message.text}
+                  <button onClick={() => setMessage(null)} className="ml-auto text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {loading ? (
+              <div className="flex justify-center py-20"><div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-sm shadow-emerald-500/25"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>
+                <p className="text-sm font-semibold text-gray-400">Loading requests…</p>
+              </div></div>
+            ) : filteredRequests.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <div className="w-14 h-14 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="w-7 h-7 text-emerald-400" /></div>
+                <p className="text-sm font-bold text-gray-700">No {statusFilter !== "ALL" ? statusFilter.toLowerCase() : ""} requests</p>
+                <p className="text-xs text-gray-400 mt-1">All clear — nothing to review right now.</p>
+              </motion.div>
+            ) : (
+              <div className="space-y-4"><AnimatePresence mode="popLayout">
+                {filteredRequests.map((req, i) => (<RequestCard key={req.id} request={req} index={i} onAction={handleAction} actionLoading={actionLoading} />))}
+              </AnimatePresence></div>
+            )}
+          </>)}
 
-          {/* ── Filter tabs ── */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {STATUS_FILTERS.map((f) => {
-              const count = tabCount(f);
-              const active = statusFilter === f;
-              const dot = STATUS_CONFIG[f]?.dot;
-              return (
-                <button
-                  key={f}
-                  onClick={() => setStatusFilter(f)}
-                  className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-bold rounded-xl border transition-all ${active
-                      ? "bg-emerald-500 text-white border-transparent shadow-sm shadow-emerald-500/20"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
-                    }`}
-                >
-                  {dot && !active && (
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
-                  )}
-                  <span className="hidden sm:inline">{f.charAt(0) + f.slice(1).toLowerCase()}</span>
-                  <span className="sm:hidden">{f === "ALL" ? "All" : f.slice(0, 3)}</span>
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? "bg-white/25 text-white" : "bg-gray-100 text-gray-500"
-                      }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* ══ USERS TAB ════════════════════════════════════════════════════ */}
+          {activeTab === "users" && (<>
+            <AnimatePresence>
+              {userMsg && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold ${userMsg.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-600"}`}>
+                  {userMsg.type === "success" ? <CheckCheck className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  {userMsg.text}
+                  <button onClick={() => setUserMsg(null)} className="ml-auto text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {confirmDeleteUser && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center"><Trash2 className="w-5 h-5 text-red-500" /></div>
+                    <div><p className="font-bold text-gray-900 text-sm">Delete User</p><p className="text-xs text-gray-500">This action cannot be undone.</p></div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-5">Delete <strong>{confirmDeleteUser.name}</strong> ({confirmDeleteUser.email})?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDeleteUser(null)} className="flex-1 text-sm font-semibold px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button onClick={() => handleDeleteUser(confirmDeleteUser.id)} disabled={!!deletingUser}
+                      className="flex-1 text-sm font-bold px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                      {deletingUser ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Delete
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+            {usersLoading ? (
+              <div className="flex justify-center py-20"><div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>
+                <p className="text-sm font-semibold text-gray-400">Loading users…</p>
+              </div></div>
+            ) : allUsers.length === 0 ? (
+              <div className="py-20 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4"><Users className="w-7 h-7 text-gray-300" /></div>
+                <p className="text-sm font-bold text-gray-500">No users found</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {allUsers.map((u, i) => {
+                  const roleColor = u.role === "ADMIN" ? { bg: "#f0fdf4", border: "#bbf7d0", text: "#059669" } : u.role === "LAB_OWNER" ? { bg: "#eff6ff", border: "#bfdbfe", text: "#2563eb" } : { bg: "#f5f3ff", border: "#ddd6fe", text: "#7c3aed" };
+                  const isAdmin = u.role === "ADMIN";
+                  return (
+                    <motion.div key={u.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{u.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                        <p className="text-[11px] text-gray-300 mt-0.5">Joined {formatDate(u.createdAt)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full border" style={{ color: roleColor.text, background: roleColor.bg, borderColor: roleColor.border }}>
+                          {u.role === "ADMIN" ? <ShieldCheck className="w-3 h-3" /> : u.role === "LAB_OWNER" ? <Building2 className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                          {u.role.replace("_", " ")}
+                        </span>
+                        {u.isVerified
+                          ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600"><MailCheck className="w-3 h-3" />Verified</span>
+                          : <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600"><MailX className="w-3 h-3" />Unverified</span>}
+                        {!isAdmin && (
+                          <button onClick={() => setConfirmDeleteUser(u)} disabled={!!deletingUser}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 transition-colors disabled:opacity-40">
+                            {deletingUser === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </>)}
 
-          {/* ── Message banner ── */}
-          <AnimatePresence>
-            {message && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold ${message.type === "success"
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                    : "bg-red-50 border-red-200 text-red-600"
-                  }`}
-              >
-                {message.type === "success"
-                  ? <CheckCheck className="w-4 h-4 flex-shrink-0" />
-                  : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
-                {message.text}
-                <button onClick={() => setMessage(null)} className="ml-auto text-xs underline opacity-70 hover:opacity-100">
-                  Dismiss
+          {/* ══ TESTS TAB ════════════════════════════════════════════════════ */}
+          {activeTab === "tests" && (<>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-gray-700">{allTests.length} test{allTests.length !== 1 ? "s" : ""} in the system</p>
+              <button onClick={() => { setShowAddTest(true); setTestMsg(null); }}
+                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm shadow-emerald-500/20 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Add Test
+              </button>
+            </div>
+            <AnimatePresence>
+              {testMsg && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                  className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold ${testMsg.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-600"}`}>
+                  {testMsg.type === "success" ? <CheckCheck className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  {testMsg.text}
+                  <button onClick={() => setTestMsg(null)} className="ml-auto text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {showAddTest && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl border border-emerald-200 shadow-sm px-5 py-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-gray-900">New Test</p>
+                  <button onClick={() => { setShowAddTest(false); setNewTestName(""); setNewTestDesc(""); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                </div>
+                <input value={newTestName} onChange={(e) => setNewTestName(e.target.value)} placeholder="Test name (required)"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                <input value={newTestDesc} onChange={(e) => setNewTestDesc(e.target.value)} placeholder="Description (optional)"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                <button onClick={handleAddTest} disabled={!newTestName.trim() || addingTest}
+                  className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-colors">
+                  {addingTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Save Test
                 </button>
               </motion.div>
             )}
-          </AnimatePresence>
-
-          {/* ── Request list ── */}
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-sm shadow-emerald-500/25">
-                  <Loader2 className="w-6 h-6 text-white animate-spin" />
-                </div>
-                <p className="text-sm font-semibold text-gray-400">Loading requests…</p>
+            {testsLoading ? (
+              <div className="flex justify-center py-20"><div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>
+                <p className="text-sm font-semibold text-gray-400">Loading tests…</p>
+              </div></div>
+            ) : allTests.length === 0 && !showAddTest ? (
+              <div className="py-20 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4"><FlaskConical className="w-7 h-7 text-gray-300" /></div>
+                <p className="text-sm font-bold text-gray-500">No tests yet</p>
+                <p className="text-xs text-gray-400 mt-1">Click "Add Test" to add the first one.</p>
               </div>
-            </div>
-          ) : filteredRequests.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-20 text-center bg-white rounded-2xl border border-gray-100 shadow-sm"
-            >
-              <div className="w-14 h-14 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
-              </div>
-              <p className="text-sm font-bold text-gray-700">
-                No {statusFilter !== "ALL" ? statusFilter.toLowerCase() : ""} requests
-              </p>
-              <p className="text-xs text-gray-400 mt-1">All clear — nothing to review right now.</p>
-            </motion.div>
-          ) : (
-            <div className="space-y-4">
-              <AnimatePresence mode="popLayout">
-                {filteredRequests.map((req, i) => (
-                  <RequestCard
-                    key={req.id}
-                    request={req}
-                    index={i}
-                    onAction={handleAction}
-                    actionLoading={actionLoading}
-                  />
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {allTests.map((t, i) => (
+                  <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                    className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-start gap-3 hover:shadow-md transition-shadow group">
+                    <div className="w-9 h-9 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <FlaskConical className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900 truncate">{t.name}</p>
+                      {t.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{t.description}</p>}
+                      <p className="text-[11px] text-gray-300 mt-1">ID #{t.id}</p>
+                    </div>
+                    <button onClick={() => handleDeleteTest(t.id)} disabled={!!deletingTest}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 bg-red-50 hover:bg-red-100 text-red-400 transition-all disabled:opacity-30 flex-shrink-0">
+                      {deletingTest === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    </button>
+                  </motion.div>
                 ))}
-              </AnimatePresence>
-            </div>
-          )}
+              </div>
+            )}
+          </>)}
+
         </main>
       </div>
     </div>

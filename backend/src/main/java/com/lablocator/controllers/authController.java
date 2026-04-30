@@ -4,8 +4,6 @@ import com.lablocator.dto.auth.*;
 import com.lablocator.dto.common.ApiMessage;
 import com.lablocator.service.AuthService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +19,11 @@ public class authController {
         return ResponseEntity.ok(authService.registerUser(req));
     }
 
+    @PostMapping("/admin/register")
+    public ResponseEntity<RegisterResponse> adminRegister(@Valid @RequestBody RegisterRequest req) {
+        return ResponseEntity.ok(authService.registerAdmin(req));
+    }
+
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest req) {
         return authService.loginUser(req);
@@ -30,12 +33,6 @@ public class authController {
     public ResponseEntity<ApiMessage> verifyToken(@RequestParam String token) {
         return ResponseEntity.ok(new ApiMessage(authService.verifyEmail(token)));
     }
-
-//    public record ResendVerificationRequest(
-//            @NotBlank(message = "Email is required")
-//            @Email(message = "Invalid email format")
-//            String email
-//    ) {}
 
     @PostMapping("/resend-verification")
     public ResponseEntity<ApiMessage> resendVerification(@Valid @RequestBody ResendVerificationRequest req) {
@@ -52,3 +49,4 @@ public class authController {
         return ResponseEntity.ok(new ApiMessage(authService.resetPassword(req.token(), req.newPassword())));
     }
 }
+
