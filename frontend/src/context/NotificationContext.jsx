@@ -14,7 +14,8 @@ import { useAuth } from "./AuthContext";
 const NotificationContext = createContext(null);
 
 // Must exactly match the Spring Boot server origin
-const WS_URL = "http://localhost:8080/ws";
+const WS_URL = import.meta.env.WS_URL || "http://localhost:8080/ws";
+// console.log(WS_URL);
 
 export const NotificationProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();

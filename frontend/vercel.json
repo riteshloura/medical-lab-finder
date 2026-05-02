@@ -1,8 +1,0 @@
-{
-    "rewrites": [
-        {
-            "source": "/api/:path*",
-            "destination": "http://lab-locator-env.eba-rga7svpm.eu-north-1.elasticbeanstalk.com/api/:path*"
-        }
-    ]
-}
