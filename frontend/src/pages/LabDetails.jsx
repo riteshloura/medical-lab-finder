@@ -135,6 +135,7 @@ export default function LabDetails() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState("");
+  const [slotsMap, setSlotsMap] = useState({}); // { today: N, tomorrow: N }
 
   /* reviews state */
   const [reviews, setReviews] = useState([]);
@@ -282,6 +283,28 @@ export default function LabDetails() {
     }
   };
 
+  // Fetch available slots for today + tomorrow whenever the drawer opens
+  const fetchSlots = async () => {
+    const fmt = (d) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const today = new Date();
+    const tomorrow = new Date(Date.now() + 86400000);
+    try {
+      const [r1, r2] = await Promise.all([
+        api.get(`/labs/${labId}/available-slots?date=${fmt(today)}`),
+        api.get(`/labs/${labId}/available-slots?date=${fmt(tomorrow)}`),
+      ]);
+      setSlotsMap({ today: r1.data, tomorrow: r2.data });
+    } catch {
+      // silently ignore — slots just won't show
+    }
+  };
+
+
   /* ── filters ── */
   const categories = [
     "All",
@@ -417,7 +440,10 @@ export default function LabDetails() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setIsDrawerOpen(true)}
+                onClick={() => {
+                  setIsDrawerOpen(true);
+                  fetchSlots();
+                }}
                 className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-md shadow-emerald-200 transition-all"
               >
                 <CalendarCheck className="w-4 h-4" />
@@ -475,11 +501,10 @@ export default function LabDetails() {
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${
-                        activeCategory === cat
+                      className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${activeCategory === cat
                           ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
                           : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -679,7 +704,7 @@ export default function LabDetails() {
             initial={{ opacity: 0, y: 40, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.9 }}
-            onClick={() => setIsDrawerOpen(true)}
+            onClick={() => { setIsDrawerOpen(true); fetchSlots(); }}
             className="fixed bottom-6 right-6 z-40 flex items-center gap-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold px-5 py-3.5 rounded-2xl shadow-xl shadow-emerald-500/30 transition-all"
           >
             <ShoppingCart className="w-5 h-5" />
@@ -874,30 +899,50 @@ export default function LabDetails() {
                             day: "numeric",
                             month: "short",
                           });
+                          const available = slotsMap[day];
+                          const isFull = available === 0;
                           return (
                             <button
                               key={day}
                               type="button"
+                              disabled={isFull}
                               onClick={() => {
                                 setBookingDate(day);
                                 setBookingError("");
                               }}
-                              className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all ${
-                                bookingDate === day
-                                  ? "border-emerald-400 bg-emerald-50 shadow-sm"
-                                  : "border-gray-200 bg-white hover:border-emerald-200"
-                              }`}
+                              className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all ${isFull
+                                  ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                                  : bookingDate === day
+                                    ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                                    : "border-gray-200 bg-white hover:border-emerald-200"
+                                }`}
                             >
                               <span
-                                className={`text-sm font-bold ${bookingDate === day ? "text-emerald-700" : "text-gray-800"}`}
+                                className={`text-sm font-bold ${isFull ? "text-gray-400" : bookingDate === day ? "text-emerald-700" : "text-gray-800"
+                                  }`}
                               >
                                 {label}
                               </span>
                               <span
-                                className={`text-xs mt-0.5 ${bookingDate === day ? "text-emerald-500" : "text-gray-400"}`}
+                                className={`text-xs mt-0.5 ${isFull ? "text-gray-300" : bookingDate === day ? "text-emerald-500" : "text-gray-400"
+                                  }`}
                               >
                                 {sub}
                               </span>
+                              {available != null && (
+                                <span
+                                  className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${isFull
+                                      ? "bg-red-50 text-red-400"
+                                      : available <= 10
+                                        ? "bg-amber-50 text-amber-600"
+                                        : "bg-emerald-50 text-emerald-600"
+                                    }`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isFull ? "bg-red-300" : available <= 10 ? "bg-amber-400" : "bg-emerald-400"
+                                    }`} />
+                                  {isFull ? "Full" : `${available} slot${available !== 1 ? "s" : ""} left`}
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -949,11 +994,10 @@ export default function LabDetails() {
                                     setTimeSlot(value);
                                     setBookingError("");
                                   }}
-                                  className={`py-2 px-1 rounded-xl text-xs font-semibold border transition-all ${
-                                    timeSlot === value
+                                  className={`py-2 px-1 rounded-xl text-xs font-semibold border transition-all ${timeSlot === value
                                       ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
                                       : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
-                                  }`}
+                                    }`}
                                 >
                                   {label}
                                 </button>
@@ -1078,11 +1122,10 @@ function TestCard({ test, idx, inCart, onToggle }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: idx * 0.04, duration: 0.3 }}
-      className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${
-        inCart
+      className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${inCart
           ? "border-emerald-400 shadow-md shadow-emerald-50"
           : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
-      }`}
+        }`}
     >
       {/* Selected badge */}
       {inCart && (
@@ -1095,22 +1138,20 @@ function TestCard({ test, idx, inCart, onToggle }) {
 
       {/* Accent bar */}
       <div
-        className={`h-0.5 bg-gradient-to-r transition-opacity ${
-          inCart
+        className={`h-0.5 bg-gradient-to-r transition-opacity ${inCart
             ? "from-emerald-400 to-teal-400 opacity-100"
             : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
-        }`}
+          }`}
       />
 
       <div className="p-4">
         {/* Top row */}
         <div className="flex items-start gap-3 mb-3">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-              inCart
+            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${inCart
                 ? "bg-emerald-50"
                 : "bg-violet-50 group-hover:bg-violet-100"
-            }`}
+              }`}
           >
             <FlaskConical
               className={`w-5 h-5 ${inCart ? "text-emerald-500" : "text-violet-500"}`}
@@ -1151,11 +1192,10 @@ function TestCard({ test, idx, inCart, onToggle }) {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             onClick={onToggle}
-            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-              inCart
+            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${inCart
                 ? "bg-red-400 hover:bg-red-500"
                 : "bg-gray-900 hover:bg-emerald-500"
-            }`}
+              }`}
           >
             {inCart ? (
               <>
@@ -1230,10 +1270,10 @@ function ReviewCard({ review }) {
   // Format date correctly
   const formattedDate = review.uploaded_at
     ? new Date(review.uploaded_at).toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
     : "";
 
   return (

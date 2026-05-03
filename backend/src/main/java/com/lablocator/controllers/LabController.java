@@ -38,6 +38,13 @@ public class LabController {
         return labService.getLabById(id);
     }
 
+    @GetMapping("/labs/{id}/available-slots")
+    public ResponseEntity<Integer> getAvailableSlotsByDate(
+            @PathVariable Long id,
+            @RequestParam String date) {
+        return ResponseEntity.ok(labService.getAvailableSlotsByDate(id, date));
+    }
+
     @PreAuthorize("hasRole('LAB_OWNER')")
     @GetMapping("/labs/me")
     public ResponseEntity<List<GetOwnersLabResponse>> getOwnerLabs(Authentication authentication) {
