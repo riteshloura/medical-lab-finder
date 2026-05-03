@@ -48,6 +48,7 @@ public class SecurityConfig {
                                                                 "/api/labs/search",
                                                                 "/api/labs/*",
                                                                 "/api/labs/*/tests",
+                                                                "/api/lab/*/review",
                                                                 "/api/tests")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
