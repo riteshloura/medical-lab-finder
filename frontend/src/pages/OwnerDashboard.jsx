@@ -36,6 +36,7 @@ import {
   XCircle,
   BadgeCheck,
   Send,
+  ChevronUp,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -565,11 +566,10 @@ function OwnerDashboard() {
               <button
                 key={item.id}
                 onClick={() => setActiveView(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  active
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${active
                     ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <item.icon className="w-4 h-4 flex-shrink-0" />
                 {item.label}
@@ -842,11 +842,10 @@ function OwnerDashboard() {
                           key={lab.id}
                           whileHover={{ y: -2 }}
                           onClick={() => setSelectedLabId(lab.id)}
-                          className={`rounded-xl border p-5 cursor-pointer transition-all ${
-                            selectedLabId === lab.id
+                          className={`rounded-xl border p-5 cursor-pointer transition-all ${selectedLabId === lab.id
                               ? "border-emerald-400 bg-emerald-50/60 shadow-md shadow-emerald-100"
                               : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-start justify-between gap-2 mb-4">
                             <div className="flex items-start gap-3 min-w-0">
@@ -1082,117 +1081,65 @@ function OwnerDashboard() {
 
               {/* ── MY REQUESTS ── */}
               {activeView === "requests" && (
-                <div className="space-y-6">
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                      <div>
-                        <h2 className="text-sm font-bold text-gray-900">My Requests</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Track the status of your lab create/update/delete requests
-                        </p>
-                      </div>
-                      <button
-                        onClick={loadLabRequests}
-                        disabled={requestsLoading}
-                        className="text-xs font-semibold text-gray-500 hover:text-emerald-600 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 hover:border-emerald-200 transition-all"
-                      >
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        Refresh
-                      </button>
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-sm font-bold text-gray-900">My Lab Requests</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Track your create / update / delete requests
+                      </p>
                     </div>
-
-                    {requestMessage && (
-                      <div
-                        className={`mx-6 mt-4 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold ${
-                          requestMessage.type === "success"
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : "bg-red-50 border-red-200 text-red-600"
-                        }`}
-                      >
-                        {requestMessage.type === "success" ? (
-                          <CheckCheck className="w-4 h-4" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4" />
-                        )}
-                        {requestMessage.text}
-                      </div>
-                    )}
-
-                    {requestsLoading ? (
-                      <div className="py-16 text-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto" />
-                      </div>
-                    ) : labRequests.length === 0 ? (
-                      <div className="py-16 text-center">
-                        <ClipboardList className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                        <p className="text-sm font-bold text-gray-500">No requests yet</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          When you create, edit, or delete a lab, your requests will appear here.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-gray-50">
-                        {labRequests.map((req) => {
-                          const statusCfg = REQUEST_STATUS_CONFIG[req.requestStatus] || REQUEST_STATUS_CONFIG.PENDING;
-                          const StatusIcon = statusCfg.icon;
-                          return (
-                            <motion.div
-                              key={req.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="px-6 py-4 hover:bg-gray-50/60 transition-colors"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <ClipboardList className="w-4 h-4 text-gray-500" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-bold text-gray-900">
-                                      {REQUEST_TYPE_LABELS[req.requestType] || req.requestType}
-                                    </p>
-                                    {req.labId && (
-                                      <p className="text-xs text-gray-400">Lab ID: {req.labId}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span
-                                    className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border"
-                                    style={{
-                                      color: statusCfg.color,
-                                      background: statusCfg.bg,
-                                      borderColor: statusCfg.border,
-                                    }}
-                                  >
-                                    <StatusIcon className="w-3 h-3" />
-                                    {statusCfg.label}
-                                  </span>
-                                  <span className="text-[11px] text-gray-400">
-                                    {req.createdAt
-                                      ? new Date(req.createdAt).toLocaleDateString("en-IN", {
-                                          day: "numeric",
-                                          month: "short",
-                                          year: "numeric",
-                                        })
-                                      : ""}
-                                  </span>
-                                </div>
-                              </div>
-                              {req.adminRemark && req.requestStatus !== "PENDING" && (
-                                <div className="mt-2 ml-12 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
-                                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Admin Remark</p>
-                                  <p className="text-xs text-gray-700">{req.adminRemark}</p>
-                                </div>
-                              )}
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <button
+                      onClick={loadLabRequests}
+                      disabled={requestsLoading}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-emerald-600 px-3 py-1.5 rounded-xl border border-gray-200 hover:border-emerald-200 transition-all disabled:opacity-40"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" /> Refresh
+                    </button>
                   </div>
+
+                  {/* Message */}
+                  {requestMessage && (
+                    <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold ${requestMessage.type === "success"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-red-50 border-red-200 text-red-600"
+                      }`}>
+                      {requestMessage.type === "success"
+                        ? <CheckCheck className="w-4 h-4" />
+                        : <AlertCircle className="w-4 h-4" />}
+                      {requestMessage.text}
+                      <button onClick={() => setRequestMessage(null)} className="ml-auto text-xs underline opacity-70 hover:opacity-100">Dismiss</button>
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  {requestsLoading ? (
+                    <div className="py-16 flex flex-col items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 text-white animate-spin" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-400">Loading requests…</p>
+                    </div>
+                  ) : labRequests.length === 0 ? (
+                    <div className="py-16 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                      <ClipboardList className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                      <p className="text-sm font-bold text-gray-500">No requests yet</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        When you create, edit, or delete a lab, your requests will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {labRequests.map((req) => (
+                        <OwnerRequestCard key={req.id} req={req} labs={labs} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
+
+
 
               {/* ── TESTS ── */}
               {activeView === "tests" && (
@@ -1641,11 +1588,10 @@ function OwnerDashboard() {
                           <button
                             key={s}
                             onClick={() => setStatusFilter(s)}
-                            className={`flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1.5 border transition-all ${
-                              active
+                            className={`flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1.5 border transition-all ${active
                                 ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                                 : "bg-gray-50 border-gray-200 text-gray-600 hover:border-emerald-200"
-                            }`}
+                              }`}
                           >
                             {s !== "ALL" && (
                               <span
@@ -1867,11 +1813,10 @@ function BookingCard({
               <button
                 onClick={onToggleCancelInput}
                 disabled={isUpdating}
-                className={`flex items-center gap-1.5 h-9 px-4 rounded-xl border text-xs font-bold disabled:opacity-50 transition-all ${
-                  cancelOpen
+                className={`flex items-center gap-1.5 h-9 px-4 rounded-xl border text-xs font-bold disabled:opacity-50 transition-all ${cancelOpen
                     ? "bg-red-100 border-red-300 text-red-700"
                     : "bg-red-50 hover:bg-red-100 border-red-200 text-red-600"
-                }`}
+                  }`}
               >
                 <Ban className="w-3.5 h-3.5" />
                 {cancelOpen ? "Hide cancel" : "Cancel booking"}
@@ -1921,11 +1866,10 @@ function BookingCard({
         {/* Terminal state badge */}
         {isTerminal && (
           <div
-            className={`flex items-center gap-2 rounded-xl px-3 py-2 border text-xs font-bold ${
-              booking.status === "COMPLETED"
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 border text-xs font-bold ${booking.status === "COMPLETED"
                 ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                 : "bg-gray-50 border-gray-200 text-gray-500"
-            }`}
+              }`}
           >
             {booking.status === "COMPLETED" ? (
               <>
@@ -1957,7 +1901,267 @@ function BookingCard({
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// \u2500\u2500 Owner Request sub-components \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+const fmtOwnerTime = (t) => {
+  if (!t) return "\u2014";
+  let str = Array.isArray(t)
+    ? `${String(t[0]).padStart(2, "0")}:${String(t[1]).padStart(2, "0")}`
+    : String(t).substring(0, 5);
+  const [h, m] = str.split(":");
+  const hour = parseInt(h, 10);
+  return `${(hour % 12) || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
+};
+
+function OwnerFieldGrid({ data }) {
+  const rows = [
+    { label: "Name", value: data.name },
+    { label: "City / State", value: data.city && data.state ? `${data.city}, ${data.state}` : data.city || data.state },
+    { label: "Address", value: data.address },
+    { label: "Contact", value: data.contactNumber },
+    { label: "Opening", value: fmtOwnerTime(data.openingTime) },
+    { label: "Closing", value: fmtOwnerTime(data.closingTime) },
+    { label: "Online Slots", value: data.slotCapacityOnline },
+    { label: "Description", value: data.description, wide: true },
+  ].filter((r) => r.value);
+  return (
+    <div className="grid grid-cols-2 gap-2 mt-2">
+      {rows.map(({ label, value, wide }) => (
+        <div key={label} className={`rounded-xl bg-gray-50 border border-gray-100 px-3 py-2 ${wide ? "col-span-2" : ""}`}>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+          <p className="text-xs font-semibold text-gray-800 mt-0.5">{value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OwnerDiffGrid({ current, requested }) {
+  const FIELDS = [
+    { label: "Name", cur: current.name, req: requested.name, wide: true },
+    { label: "Description", cur: current.description, req: requested.description, wide: true },
+    { label: "Address", cur: current.address, req: requested.address },
+    { label: "City", cur: current.city, req: requested.city },
+    { label: "State", cur: current.state, req: requested.state },
+    { label: "Contact", cur: current.contactNumber, req: requested.contactNumber },
+    { label: "Opening", cur: fmtOwnerTime(current.openingTime), req: fmtOwnerTime(requested.openingTime) },
+    { label: "Closing", cur: fmtOwnerTime(current.closingTime), req: fmtOwnerTime(requested.closingTime) },
+    { label: "Online Slots", cur: String(current.slotCapacityOnline ?? ""), req: String(requested.slotCapacityOnline ?? "") },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-2 mt-2">
+      {FIELDS.map(({ label, cur, req, wide }) => {
+        const changed = String(cur ?? "").trim() !== String(req ?? "").trim();
+        return (
+          <div key={label} className={`rounded-xl px-3 py-2 ${wide ? "col-span-2" : ""} ${changed ? "bg-amber-50 border border-amber-100" : "bg-gray-50 border border-gray-100"}`}>
+            <div className="flex items-center justify-between">
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${changed ? "text-amber-500" : "text-gray-400"}`}>{label}</p>
+              {changed && <span className="text-[9px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded">CHANGED</span>}
+            </div>
+            {changed ? (
+              <div className="mt-0.5">
+                <p className="text-[11px] text-gray-400 line-through">{cur || "\u2014"}</p>
+                <p className="text-xs font-bold text-amber-700">{req || "\u2014"}</p>
+              </div>
+            ) : (
+              <p className="text-xs font-semibold text-gray-700 mt-0.5">{cur || "\u2014"}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const OWNER_TYPE_CFG = {
+  CREATE_LAB: { icon: Plus, color: "#059669", bg: "#f0fdf4", border: "#bbf7d0", label: "Create Lab", bar: "#10b981" },
+  UPDATE_LAB: { icon: Edit3, color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", label: "Update Lab", bar: "#3b82f6" },
+  DELETE_LAB: { icon: Trash2, color: "#dc2626", bg: "#fef2f2", border: "#fecaca", label: "Delete Lab", bar: "#ef4444" },
+};
+const OWNER_STATUS_BAR = { PENDING: "#f59e0b", APPROVED: "#10b981", REJECTED: "#ef4444" };
+
+function OwnerRequestCard({ req, labs }) {
+  const [expanded, setExpanded] = useState(false);
+  const [currentLab, setCurrentLab] = useState(null);
+  const [fetchingLab, setFetchingLab] = useState(false);
+
+  const isUpdate = req.requestType === "UPDATE_LAB";
+  const isDelete = req.requestType === "DELETE_LAB";
+  const isCreate = req.requestType === "CREATE_LAB";
+  const isApproved = req.requestStatus === "APPROVED";
+
+  const localLab = labs.find((l) => l.id === req.labId) || null;
+
+  let payload = null;
+  if (req.changePayload) { try { payload = JSON.parse(req.changePayload); } catch { } }
+
+  const labName = isCreate
+    ? (payload?.name || "New Lab")
+    : (localLab?.name || payload?.name || `Lab #${req.labId}`);
+
+  const subline = payload?.city && payload?.state
+    ? `${payload.city}, ${payload.state}`
+    : localLab ? `${localLab.city}, ${localLab.state}` : "";
+
+  // Fetch current lab for diff on UPDATE expand
+  useEffect(() => {
+    if (isUpdate && expanded && !currentLab && req.labId && !fetchingLab) {
+      setFetchingLab(true);
+      api.get(`/labs/${req.labId}`)
+        .then((r) => setCurrentLab(r.data))
+        .catch(() => { })
+        .finally(() => setFetchingLab(false));
+    }
+  }, [isUpdate, expanded, req.labId, currentLab, fetchingLab]);
+
+  const typeCfg = OWNER_TYPE_CFG[req.requestType] || OWNER_TYPE_CFG.CREATE_LAB;
+  const statusCfg = REQUEST_STATUS_CONFIG[req.requestStatus] || REQUEST_STATUS_CONFIG.PENDING;
+  const TypeIcon = typeCfg.icon;
+  const StatusIcon = statusCfg.icon;
+  const barColor = OWNER_STATUS_BAR[req.requestStatus] || "#e5e7eb";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+    >
+      <div className="flex">
+        {/* Colored left bar */}
+        <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ background: barColor }} />
+
+        <div className="flex-1 min-w-0">
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-gray-50 flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border"
+                style={{ background: typeCfg.bg, borderColor: typeCfg.border }}>
+                <TypeIcon className="w-4 h-4" style={{ color: typeCfg.color }} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">{labName}</p>
+                {subline && <p className="text-xs text-gray-400">{subline}</p>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border"
+                style={{ color: typeCfg.color, background: typeCfg.bg, borderColor: typeCfg.border }}>
+                <TypeIcon className="w-3 h-3" /> {typeCfg.label}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border"
+                style={{ color: statusCfg.color, background: statusCfg.bg, borderColor: statusCfg.border }}>
+                <StatusIcon className="w-3 h-3" /> {statusCfg.label}
+              </span>
+              <span className="text-[11px] text-gray-400">
+                {req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : ""}
+              </span>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-5 py-4">
+            {/* DELETE approved */}
+            {isDelete && isApproved && (
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5">
+                <CheckCircle2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <p className="text-xs font-semibold text-gray-500">
+                  <span className="font-black">{labName}</span> has been permanently deleted and is no longer in the system.
+                </p>
+              </div>
+            )}
+
+            {/* DELETE pending/rejected */}
+            {isDelete && !isApproved && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
+                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                  <p className="text-xs font-semibold text-red-700">
+                    Deletion requested for <span className="font-black">{labName}</span>. Awaiting admin review.
+                  </p>
+                </div>
+                {localLab && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {localLab.address && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <MapPin className="w-3 h-3 text-gray-300 flex-shrink-0" />{localLab.address}
+                      </div>
+                    )}
+                    {localLab.contactNumber && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <Phone className="w-3 h-3 text-gray-300 flex-shrink-0" />{localLab.contactNumber}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <Clock3 className="w-3 h-3 text-gray-300 flex-shrink-0" />{localLab.slotCapacityOnline} online slots
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CREATE: payload summary */}
+            {isCreate && payload && (
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "Address", value: payload.address },
+                  { label: "Contact", value: payload.contactNumber },
+                  { label: "Slots", value: payload.slotCapacityOnline && `${payload.slotCapacityOnline} online` },
+                  { label: "Hours", value: payload.openingTime && `${fmtOwnerTime(payload.openingTime)} \u2013 ${fmtOwnerTime(payload.closingTime)}` },
+                ].filter((r) => r.value).map(({ label, value }) => (
+                  <div key={label} className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+                    <p className="text-xs font-semibold text-gray-700 mt-0.5">{value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* UPDATE: expand diff */}
+            {isUpdate && (
+              <div>
+                <button
+                  onClick={() => setExpanded((p) => !p)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {expanded ? "Hide" : "Show"} what changed
+                </button>
+                {expanded && (
+                  <div className="mt-2">
+                    {fetchingLab ? (
+                      <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading current lab data…
+                      </div>
+                    ) : currentLab && payload ? (
+                      <OwnerDiffGrid current={currentLab} requested={payload} />
+                    ) : payload ? (
+                      <OwnerFieldGrid data={payload} />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Admin remark */}
+          {req.adminRemark && req.requestStatus !== "PENDING" && (
+            <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/60">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Admin Remark</p>
+              <p className="text-xs text-gray-700">{req.adminRemark}</p>
+              {req.reviewedAt && (
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Reviewed: {new Date(req.reviewedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// \u2500\u2500 Sub-components \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 const STAT_ACCENTS = {
   emerald: {
@@ -2054,11 +2258,10 @@ function Toast({ msg, onClose }) {
   const isSuccess = msg.type === "success";
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl px-4 py-3 border text-sm font-semibold ${
-        isSuccess
+      className={`flex items-center gap-3 rounded-xl px-4 py-3 border text-sm font-semibold ${isSuccess
           ? "bg-emerald-50 border-emerald-200 text-emerald-700"
           : "bg-red-50 border-red-200 text-red-700"
-      }`}
+        }`}
     >
       {isSuccess ? (
         <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
@@ -2233,11 +2436,10 @@ function ReportPanel({ bookingTest }) {
 
       {message && (
         <div
-          className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${
-            message.type === "success"
+          className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${message.type === "success"
               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
               : "bg-red-50 text-red-600 border border-red-200"
-          }`}
+            }`}
         >
           {message.type === "success" ? (
             <CheckCircle2 className="w-3 h-3 flex-shrink-0" />

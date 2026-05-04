@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +47,19 @@ public class LabService {
 
     public int getAvailableSlots(LabSlot slot) {
         return slot.getTotalSlots() - slot.getBookedSlots();
+    }
+
+    public int getAvailableSlotsByDate(Long labId, String dateStr) {
+        Lab lab = labRepo.findById(labId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lab", labId));
+        LocalDate date;
+        try {
+            date = LocalDate.parse(dateStr);
+        } catch (DateTimeParseException e) {
+            date = LocalDate.now();
+        }
+        LabSlot slot = getOrCreateSlot(lab, date);
+        return getAvailableSlots(slot);
     }
 
     public List<GetNearbyLabsResponse> getNearbyLabs(double lat, double lng, double radius) {
