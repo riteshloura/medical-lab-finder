@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -28,9 +28,11 @@ import {
   Trash2,
   MessageSquare,
   UserCircle2,
+  Info,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import api from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
 /* ─────────────────────────────────────────
    Tiny helpers
@@ -142,6 +144,10 @@ export default function LabDetails() {
   const [isLoadingReviews, setIsLoadingReviews] = useState(true);
   const [reviewsError, setReviewsError] = useState("");
 
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+  const isLabOwner = user?.role === "LAB_OWNER";
+
   /* ── fetch lab ── */
   useEffect(() => {
     const fetchLab = async () => {
@@ -229,6 +235,16 @@ export default function LabDetails() {
       setBookingError("Please add at least one test.");
       return;
     }
+
+    // ✅ ADD THIS BLOCK
+    if (!isAuthenticated) {
+      const redirectUrl = encodeURIComponent(
+        `${location.pathname}${location.search}`
+      );
+      navigate(`/login?redirect=${redirectUrl}`);
+      return;
+    }
+
     try {
       setIsBooking(true);
       setBookingError("");
@@ -437,23 +453,32 @@ export default function LabDetails() {
               </div>
 
               {/* CTA */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  setIsDrawerOpen(true);
-                  fetchSlots();
-                }}
-                className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-md shadow-emerald-200 transition-all"
-              >
-                <CalendarCheck className="w-4 h-4" />
-                Book Appointment
-                {cart.length > 0 && (
-                  <span className="ml-1 bg-white/20 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                    {cart.length}
+              {isLabOwner ? (
+                <div className="text-center text-gray-500 text-sm py-3">
+                  <span className="flex items-center justify-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Lab owners cannot book appointments.
                   </span>
-                )}
-              </motion.button>
+                </div>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setIsDrawerOpen(true);
+                    fetchSlots();
+                  }}
+                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-md shadow-emerald-200 transition-all"
+                >
+                  <CalendarCheck className="w-4 h-4" />
+                  Book Appointment
+                  {cart.length > 0 && (
+                    <span className="ml-1 bg-white/20 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                      {cart.length}
+                    </span>
+                  )}
+                </motion.button>
+              )}
             </div>
           </motion.div>
         ) : null}
@@ -502,8 +527,8 @@ export default function LabDetails() {
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
                       className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${activeCategory === cat
-                          ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
+                        ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
+                        : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
                         }`}
                     >
                       {cat}
@@ -911,10 +936,10 @@ export default function LabDetails() {
                                 setBookingError("");
                               }}
                               className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all ${isFull
-                                  ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
-                                  : bookingDate === day
-                                    ? "border-emerald-400 bg-emerald-50 shadow-sm"
-                                    : "border-gray-200 bg-white hover:border-emerald-200"
+                                ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                                : bookingDate === day
+                                  ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                                  : "border-gray-200 bg-white hover:border-emerald-200"
                                 }`}
                             >
                               <span
@@ -932,10 +957,10 @@ export default function LabDetails() {
                               {available != null && (
                                 <span
                                   className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${isFull
-                                      ? "bg-red-50 text-red-400"
-                                      : available <= 10
-                                        ? "bg-amber-50 text-amber-600"
-                                        : "bg-emerald-50 text-emerald-600"
+                                    ? "bg-red-50 text-red-400"
+                                    : available <= 10
+                                      ? "bg-amber-50 text-amber-600"
+                                      : "bg-emerald-50 text-emerald-600"
                                     }`}
                                 >
                                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isFull ? "bg-red-300" : available <= 10 ? "bg-amber-400" : "bg-emerald-400"
@@ -995,8 +1020,8 @@ export default function LabDetails() {
                                     setBookingError("");
                                   }}
                                   className={`py-2 px-1 rounded-xl text-xs font-semibold border transition-all ${timeSlot === value
-                                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
-                                      : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
+                                    ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                                    : "bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
                                     }`}
                                 >
                                   {label}
@@ -1065,7 +1090,7 @@ export default function LabDetails() {
                       isBooking ||
                       cart.length === 0 ||
                       !timeSlot ||
-                      !bookingDate
+                      !bookingDate || isLabOwner
                     }
                     className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-md shadow-emerald-200 transition-all"
                   >
@@ -1116,6 +1141,8 @@ function InfoRow({ icon, label, highlight }) {
 }
 
 function TestCard({ test, idx, inCart, onToggle }) {
+  const { user } = useAuth();
+  const isLabOwner = user?.role === "LAB_OWNER";
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -1123,8 +1150,8 @@ function TestCard({ test, idx, inCart, onToggle }) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: idx * 0.04, duration: 0.3 }}
       className={`group relative bg-white rounded-2xl border transition-all duration-200 overflow-hidden ${inCart
-          ? "border-emerald-400 shadow-md shadow-emerald-50"
-          : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
+        ? "border-emerald-400 shadow-md shadow-emerald-50"
+        : "border-gray-100 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-50"
         }`}
     >
       {/* Selected badge */}
@@ -1139,8 +1166,8 @@ function TestCard({ test, idx, inCart, onToggle }) {
       {/* Accent bar */}
       <div
         className={`h-0.5 bg-gradient-to-r transition-opacity ${inCart
-            ? "from-emerald-400 to-teal-400 opacity-100"
-            : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
+          ? "from-emerald-400 to-teal-400 opacity-100"
+          : "from-violet-400 to-indigo-400 opacity-0 group-hover:opacity-100"
           }`}
       />
 
@@ -1149,8 +1176,8 @@ function TestCard({ test, idx, inCart, onToggle }) {
         <div className="flex items-start gap-3 mb-3">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${inCart
-                ? "bg-emerald-50"
-                : "bg-violet-50 group-hover:bg-violet-100"
+              ? "bg-emerald-50"
+              : "bg-violet-50 group-hover:bg-violet-100"
               }`}
           >
             <FlaskConical
@@ -1188,25 +1215,34 @@ function TestCard({ test, idx, inCart, onToggle }) {
             <span className="text-xs text-gray-400 italic">Price N/A</span>
           )}
 
-          <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={onToggle}
-            className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${inCart
+          {isLabOwner ? (
+            <div className="text-center text-gray-500 text-sm py-3">
+              {/* <span className="flex items-center justify-center gap-2">
+                <Info className="w-4 h-4" />
+                Lab owners cannot book appointments.
+              </span> */}
+            </div>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={onToggle}
+              className={`flex items-center gap-1 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${inCart
                 ? "bg-red-400 hover:bg-red-500"
                 : "bg-gray-900 hover:bg-emerald-500"
-              }`}
-          >
-            {inCart ? (
-              <>
-                <Minus className="w-3 h-3" /> Remove
-              </>
-            ) : (
-              <>
-                <Plus className="w-3 h-3" /> Add
-              </>
-            )}
-          </motion.button>
+                }`}
+            >
+              {inCart ? (
+                <>
+                  <Minus className="w-3 h-3" /> Remove
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3 h-3" /> Add
+                </>
+              )}
+            </motion.button>
+          )}
         </div>
       </div>
     </motion.div>

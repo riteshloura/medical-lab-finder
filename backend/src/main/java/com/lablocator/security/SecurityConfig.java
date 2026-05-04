@@ -46,7 +46,7 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/labs/nearby",
                                                                 "/api/labs/search",
-                                                                "/api/labs/*",
+                                                                "/api/labs/**",
                                                                 "/api/labs/*/tests",
                                                                 "/api/lab/*/review",
                                                                 "/api/tests")
