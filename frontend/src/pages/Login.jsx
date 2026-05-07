@@ -13,7 +13,7 @@ import {
   CheckCircle,
   RefreshCw,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { resendVerificationEmail } from "../api/auth";
 
@@ -30,6 +30,9 @@ function Login() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const [params] = useSearchParams();
+  const redirect = params.get("redirect");
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
@@ -50,7 +53,11 @@ function Login() {
     const result = await login(email, password);
 
     if (result.success) {
-      navigate(result.user?.role === "LAB_OWNER" ? "/owner/dashboard" : "/");
+      if (redirect) {
+        navigate(decodeURIComponent(redirect));
+      } else {
+        navigate(result.user?.role === "LAB_OWNER" ? "/owner/dashboard" : "/");
+      }
     } else {
       const msg = result.error || "";
       if (msg.toLowerCase().includes("verify your email")) {
